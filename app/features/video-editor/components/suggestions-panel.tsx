@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/FileTree";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Loader2Icon, RefreshCwIcon } from "lucide-react";
+import { AlertCircleIcon, Loader2Icon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Clip, FrontendInsertionPoint } from "../clip-state-reducer";
@@ -107,7 +107,7 @@ export function SuggestionsPanel(props: SuggestionsPanelProps) {
     );
   });
 
-  const { messages, sendMessage, status, setMessages, stop } = useChat({
+  const { messages, sendMessage, status, setMessages, stop, error } = useChat({
     transport: new DefaultChatTransport({
       api: `/videos/${props.videoId}/suggest-next-clip`,
     }),
@@ -222,18 +222,26 @@ export function SuggestionsPanel(props: SuggestionsPanelProps) {
               </Button>
             </div>
             <ScrollArea className="h-[150px] rounded border border-gray-700 bg-gray-800/50 p-3">
-              {isStreaming && !suggestionText && (
+              {error && (
+                <div className="flex items-start gap-2 text-sm text-red-400">
+                  <AlertCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Failed to generate suggestion. Click refresh to try again.
+                  </span>
+                </div>
+              )}
+              {!error && isStreaming && !suggestionText && (
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Loader2Icon className="h-4 w-4 animate-spin" />
                   Generating suggestion...
                 </div>
               )}
-              {suggestionText && (
+              {!error && suggestionText && (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">
                   {suggestionText}
                 </p>
               )}
-              {!isStreaming && !suggestionText && (
+              {!error && !isStreaming && !suggestionText && (
                 <p className="text-sm text-gray-500">
                   Click refresh to generate a suggestion.
                 </p>

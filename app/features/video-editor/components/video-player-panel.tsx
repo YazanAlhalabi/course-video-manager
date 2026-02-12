@@ -11,6 +11,7 @@ import { formatSecondsToTimeCode } from "@/services/utils";
 import { LiveMediaStream } from "./live-media-stream";
 import { RecordingSignalIndicator } from "./timeline-indicators";
 import { TableOfContents } from "./table-of-contents";
+import { SuggestionsPanel } from "./suggestions-panel";
 import { ActionsDropdown } from "./actions-dropdown";
 import { isClipSection } from "../clip-utils";
 import { PreloadableClipManager } from "../preloadable-clip";
@@ -18,6 +19,7 @@ import { AlertTriangleIcon, ChevronLeftIcon } from "lucide-react";
 import { Link, useFetcher } from "react-router";
 import { useContextSelector } from "use-context-selector";
 import { VideoEditorContext } from "../video-editor-context";
+import { useState, useMemo } from "react";
 
 /**
  * Video player panel component displaying video preview, controls, and metadata.
@@ -182,6 +184,24 @@ export const VideoPlayerPanel = () => {
     (ctx) => ctx.hasExplainerFolder
   );
   const revealVideoFetcher = useFetcher();
+
+  const [activeTab, setActiveTab] = useState<"suggestions" | "toc">(
+    "suggestions"
+  );
+
+  // Get the last clip with text (transcription completed) for suggestions trigger
+  const lastTranscribedClipId = useMemo(() => {
+    const clipsWithText = clips.filter(
+      (clip) => clip.type === "on-database" && clip.text
+    );
+    return clipsWithText.length > 0
+      ? clipsWithText[clipsWithText.length - 1]!.frontendId
+      : null;
+  }, [clips]);
+
+  const clipSections = items.filter(isClipSection);
+  const hasSections = clipSections.length > 0;
+
   return (
     <>
       <div className="lg:flex-1 relative order-1 lg:order-2">
@@ -344,12 +364,50 @@ export const VideoPlayerPanel = () => {
               </TooltipProvider>
             </div>
 
-            {/* Table of Contents */}
-            <TableOfContents
-              clipSections={items.filter(isClipSection)}
-              selectedClipsSet={selectedClipsSet}
-              onSectionClick={onSectionClick}
-            />
+            {/* Tabbed panel for Suggestions and Table of Contents */}
+            <div className="mt-6 border-t border-gray-700 pt-4">
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setActiveTab("suggestions")}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded transition-colors",
+                    activeTab === "suggestions"
+                      ? "bg-gray-700 text-white"
+                      : "text-gray-400 hover:text-gray-200"
+                  )}
+                >
+                  Suggestions
+                </button>
+                {hasSections && (
+                  <button
+                    onClick={() => setActiveTab("toc")}
+                    className={cn(
+                      "px-3 py-1.5 text-sm font-medium rounded transition-colors",
+                      activeTab === "toc"
+                        ? "bg-gray-700 text-white"
+                        : "text-gray-400 hover:text-gray-200"
+                    )}
+                  >
+                    Sections
+                  </button>
+                )}
+              </div>
+
+              {activeTab === "suggestions" && (
+                <SuggestionsPanel
+                  videoId={videoId}
+                  lastTranscribedClipId={lastTranscribedClipId}
+                />
+              )}
+
+              {activeTab === "toc" && hasSections && (
+                <TableOfContents
+                  clipSections={clipSections}
+                  selectedClipsSet={selectedClipsSet}
+                  onSectionClick={onSectionClick}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

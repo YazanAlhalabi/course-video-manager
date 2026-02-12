@@ -23,25 +23,22 @@ export function TableOfContents(props: TableOfContentsProps) {
   if (props.clipSections.length === 0) return null;
 
   return (
-    <div className="mt-6 border-t border-gray-700 pt-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">Sections</h3>
-      <ScrollArea className="h-[200px]">
-        <div className="space-y-2 pr-4">
-          {props.clipSections.map((section, index) => (
-            <button
-              key={section.frontendId}
-              onClick={() => props.onSectionClick(section.frontendId, index)}
-              className={cn(
-                "w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-700 transition-colors",
-                props.selectedClipsSet.has(section.frontendId) &&
-                  "bg-gray-700 font-medium"
-              )}
-            >
-              {section.name}
-            </button>
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
+    <ScrollArea className="h-[200px]">
+      <div className="space-y-2 pr-4">
+        {props.clipSections.map((section, index) => (
+          <button
+            key={section.frontendId}
+            onClick={() => props.onSectionClick(section.frontendId, index)}
+            className={cn(
+              "w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-700 transition-colors",
+              props.selectedClipsSet.has(section.frontendId) &&
+                "bg-gray-700 font-medium"
+            )}
+          >
+            {section.name}
+          </button>
+        ))}
+      </div>
+    </ScrollArea>
   );
 }

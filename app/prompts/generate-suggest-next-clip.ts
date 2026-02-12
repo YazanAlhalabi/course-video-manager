@@ -1,12 +1,9 @@
-import { getLinkInstructions, type GlobalLink } from "./link-instructions";
-
 export const generateSuggestNextClipPrompt = (opts: {
   code: {
     path: string;
     content: string;
   }[];
   transcript: string;
-  links: GlobalLink[];
 }) => {
   const transcriptSection = opts.transcript
     ? `Here is the full transcript of the video so far, broken into clips:
@@ -51,8 +48,6 @@ Your suggestion should:
 - Be a reasonable length for a single clip (1-3 sentences typically)
 - Progress the lesson logically
 - Reference specific code if appropriate
-
-${getLinkInstructions(opts.links)}
 </the-ask>
 
 <output-format>

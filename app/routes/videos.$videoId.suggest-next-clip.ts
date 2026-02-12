@@ -1,4 +1,3 @@
-import { DBService } from "@/services/db-service";
 import { layerLive } from "@/services/layer";
 import { acquireTextWritingContext } from "@/services/text-writing-agent";
 import { generateSuggestNextClipPrompt } from "@/prompts/generate-suggest-next-clip";
@@ -29,14 +28,9 @@ export const action = async (args: Route.ActionArgs) => {
       enabledSections: [],
     });
 
-    // Fetch global links for injection into prompts
-    const db = yield* DBService;
-    const links = yield* db.getLinks();
-
     const systemPrompt = generateSuggestNextClipPrompt({
       code: videoContext.textFiles,
       transcript: videoContext.transcript,
-      links,
     });
 
     const agent = new Agent({

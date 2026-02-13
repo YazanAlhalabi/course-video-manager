@@ -49,6 +49,7 @@ export const createTextWritingAgent = (props: {
   youtubeChapters?: { timestamp: string; name: string }[];
   sectionNames?: string[];
   links?: GlobalLink[];
+  courseStructure?: string;
 }) => {
   const links = props.links ?? [];
   const systemPrompt = (() => {
@@ -157,9 +158,13 @@ export const createTextWritingAgent = (props: {
     }
   })();
 
+  const fullSystemPrompt = props.courseStructure
+    ? `${systemPrompt}\n\n## Course Structure\nThis lesson is part of a larger course. Here is the full structure:\n<course-structure>\n${props.courseStructure}\n</course-structure>`
+    : systemPrompt;
+
   return new Agent({
     model: props.model,
-    system: systemPrompt,
+    system: fullSystemPrompt,
   });
 };
 

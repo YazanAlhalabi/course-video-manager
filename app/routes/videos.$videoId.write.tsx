@@ -82,6 +82,7 @@ import { data, Link, useFetcher, useRevalidator } from "react-router";
 import type { Route } from "./+types/videos.$videoId.write";
 import path from "path";
 import { FileSystem } from "@effect/platform";
+import { cn } from "@/lib/utils";
 import { FileTree } from "@/components/FileTree";
 import { StandaloneFileTree } from "@/components/StandaloneFileTree";
 import { StandaloneFileManagementModal } from "@/components/standalone-file-management-modal";
@@ -259,6 +260,15 @@ export const loader = async (args: Route.LoaderArgs) => {
         transcriptWordCount,
         clipSections: sectionsWithWordCount,
         links: globalLinks,
+        courseStructure: null as null | {
+          repoName: string;
+          currentSectionPath: string;
+          currentLessonPath: string;
+          sections: {
+            path: string;
+            lessons: { path: string }[];
+          }[];
+        },
       };
     }
 
@@ -312,6 +322,25 @@ export const loader = async (args: Route.LoaderArgs) => {
     const nextVideoId = yield* db.getNextVideoId(videoId);
     const previousVideoId = yield* db.getPreviousVideoId(videoId);
 
+    // Fetch course structure for non-standalone videos
+    const repoWithSections = yield* db.getRepoWithSectionsById(
+      section.repoVersion.repoId
+    );
+    const matchingVersion = repoWithSections?.versions.find(
+      (v) => v.id === section.repoVersion.id
+    );
+    const courseStructure = matchingVersion
+      ? {
+          repoName: repoWithSections!.name,
+          currentSectionPath: section.path,
+          currentLessonPath: lesson.path,
+          sections: matchingVersion.sections.map((s) => ({
+            path: s.path,
+            lessons: s.lessons.map((l) => ({ path: l.path })),
+          })),
+        }
+      : null;
+
     return {
       videoPath: video.path,
       lessonPath: lesson.path,
@@ -326,6 +355,7 @@ export const loader = async (args: Route.LoaderArgs) => {
       transcriptWordCount,
       clipSections: sectionsWithWordCount,
       links: globalLinks,
+      courseStructure,
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -371,6 +401,7 @@ const modeToLabel: Record<Mode, string> = {
 
 const MODE_STORAGE_KEY = "article-writer-mode";
 const MODEL_STORAGE_KEY = "article-writer-model";
+const COURSE_STRUCTURE_STORAGE_KEY = "article-writer-include-course-structure";
 
 export function InnerComponent(props: Route.ComponentProps) {
   const { videoId } = props.params;
@@ -388,6 +419,7 @@ export function InnerComponent(props: Route.ComponentProps) {
     transcriptWordCount,
     clipSections,
     links,
+    courseStructure,
   } = props.loaderData;
   const [text, setText] = useState<string>("");
   const [mode, setMode] = useState<Mode>(() => {
@@ -419,6 +451,14 @@ export function InnerComponent(props: Route.ComponentProps) {
   const [enabledSections, setEnabledSections] = useState<Set<string>>(() => {
     // By default, all sections are enabled
     return new Set(clipSections.map((s) => s.id));
+  });
+
+  const [sidebarTab, setSidebarTab] = useState<"context" | "links">("context");
+  const [includeCourseStructure, setIncludeCourseStructure] = useState(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(COURSE_STRUCTURE_STORAGE_KEY) === "true";
+    }
+    return false;
   });
 
   // Check if explainer or problem folder exists
@@ -581,6 +621,10 @@ export function InnerComponent(props: Route.ComponentProps) {
             model,
             includeTranscript: transcriptEnabled,
             enabledSections: Array.from(enabledSections),
+            courseStructure:
+              includeCourseStructure && courseStructure
+                ? courseStructure
+                : undefined,
           },
         }
       );
@@ -613,6 +657,10 @@ export function InnerComponent(props: Route.ComponentProps) {
           model,
           includeTranscript: transcriptEnabled,
           enabledSections: Array.from(enabledSections),
+          courseStructure:
+            includeCourseStructure && courseStructure
+              ? courseStructure
+              : undefined,
         },
       }
     );
@@ -738,237 +786,305 @@ export function InnerComponent(props: Route.ComponentProps) {
       </div>
       <div className="flex-1 flex overflow-hidden">
         {/* Left column: Video and Transcript/Files */}
-        <div className="w-1/4 border-r overflow-y-auto p-4 space-y-4 scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
-          <Video src={`/videos/${videoId}`} />
-          <div className="flex items-center gap-2 py-1 px-2">
-            <Checkbox
-              id="include-transcript"
-              checked={
-                clipSections.length > 0
-                  ? enabledSections.size === clipSections.length
-                    ? true
-                    : enabledSections.size > 0
-                      ? "indeterminate"
-                      : false
-                  : includeTranscript
-              }
-              onCheckedChange={(checked) => {
-                if (clipSections.length > 0) {
-                  // If sections exist, toggle all sections
-                  if (checked) {
-                    setEnabledSections(new Set(clipSections.map((s) => s.id)));
-                  } else {
-                    setEnabledSections(new Set());
-                  }
-                } else {
-                  // If no sections, just toggle transcript
-                  setIncludeTranscript(!!checked);
-                }
-              }}
-            />
-            <label
-              htmlFor="include-transcript"
-              className="text-sm flex-1 cursor-pointer"
-            >
-              Transcript
-            </label>
-            <span className="text-xs text-muted-foreground">
-              ({transcriptWordCount.toLocaleString()} words)
-            </span>
+        <div className="w-1/4 border-r flex flex-col overflow-hidden">
+          <div className="p-4 pb-0">
+            <Video src={`/videos/${videoId}`} />
           </div>
-          {/* Section checkboxes - only show when sections exist */}
-          {clipSections.length > 0 && (
-            <div className="shrink-0">
-              <ScrollArea className="h-48">
-                <div className="space-y-1 px-2">
-                  {clipSections.map((section) => (
-                    <div
-                      key={section.id}
-                      className="flex items-center gap-2 py-1 pl-6"
-                    >
+          {/* Tab buttons */}
+          <div className="flex gap-1 px-4 py-2">
+            <button
+              onClick={() => setSidebarTab("context")}
+              className={cn(
+                "px-3 py-1.5 text-sm font-medium rounded transition-colors",
+                sidebarTab === "context"
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-400 hover:text-gray-200"
+              )}
+            >
+              Context
+            </button>
+            <button
+              onClick={() => setSidebarTab("links")}
+              className={cn(
+                "px-3 py-1.5 text-sm font-medium rounded transition-colors",
+                sidebarTab === "links"
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-400 hover:text-gray-200"
+              )}
+            >
+              Links
+            </button>
+          </div>
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+            {sidebarTab === "context" && (
+              <>
+                <div className="flex items-center gap-2 py-1 px-2">
+                  <Checkbox
+                    id="include-transcript"
+                    checked={
+                      clipSections.length > 0
+                        ? enabledSections.size === clipSections.length
+                          ? true
+                          : enabledSections.size > 0
+                            ? "indeterminate"
+                            : false
+                        : includeTranscript
+                    }
+                    onCheckedChange={(checked) => {
+                      if (clipSections.length > 0) {
+                        if (checked) {
+                          setEnabledSections(
+                            new Set(clipSections.map((s) => s.id))
+                          );
+                        } else {
+                          setEnabledSections(new Set());
+                        }
+                      } else {
+                        setIncludeTranscript(!!checked);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="include-transcript"
+                    className="text-sm flex-1 cursor-pointer"
+                  >
+                    Transcript
+                  </label>
+                  <span className="text-xs text-muted-foreground">
+                    ({transcriptWordCount.toLocaleString()} words)
+                  </span>
+                </div>
+                {/* Section checkboxes */}
+                {clipSections.length > 0 && (
+                  <div className="shrink-0">
+                    <ScrollArea className="h-48">
+                      <div className="space-y-1 px-2">
+                        {clipSections.map((section) => (
+                          <div
+                            key={section.id}
+                            className="flex items-center gap-2 py-1 pl-6"
+                          >
+                            <Checkbox
+                              id={`section-${section.id}`}
+                              checked={enabledSections.has(section.id)}
+                              onCheckedChange={(checked) => {
+                                const newSet = new Set(enabledSections);
+                                if (checked) {
+                                  newSet.add(section.id);
+                                } else {
+                                  newSet.delete(section.id);
+                                }
+                                setEnabledSections(newSet);
+                              }}
+                            />
+                            <label
+                              htmlFor={`section-${section.id}`}
+                              className="text-sm flex-1 cursor-pointer"
+                            >
+                              {section.name}
+                            </label>
+                            <span className="text-xs text-muted-foreground">
+                              ({section.wordCount.toLocaleString()} words)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+                {/* Course structure toggle */}
+                {courseStructure && (
+                  <div className="flex items-start gap-2 py-1 px-2">
+                    <Checkbox
+                      id="include-course-structure"
+                      className="mt-1"
+                      checked={includeCourseStructure}
+                      onCheckedChange={(checked) => {
+                        setIncludeCourseStructure(!!checked);
+                        if (typeof localStorage !== "undefined") {
+                          localStorage.setItem(
+                            COURSE_STRUCTURE_STORAGE_KEY,
+                            String(!!checked)
+                          );
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="include-course-structure"
+                        className="text-sm cursor-pointer"
+                      >
+                        Course Structure
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Include repo/section/lesson tree so the LLM knows where
+                        this lesson fits in the course
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {/* File tree - lesson-connected videos */}
+                {!isStandalone && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 py-1 px-2">
                       <Checkbox
-                        id={`section-${section.id}`}
-                        checked={enabledSections.has(section.id)}
+                        id="include-files"
+                        checked={
+                          files.length === 0
+                            ? false
+                            : enabledFiles.size === files.length
+                              ? true
+                              : enabledFiles.size > 0
+                                ? "indeterminate"
+                                : false
+                        }
                         onCheckedChange={(checked) => {
-                          const newSet = new Set(enabledSections);
                           if (checked) {
-                            newSet.add(section.id);
+                            setEnabledFiles(new Set(files.map((f) => f.path)));
                           } else {
-                            newSet.delete(section.id);
+                            setEnabledFiles(new Set());
                           }
-                          setEnabledSections(newSet);
                         }}
                       />
                       <label
-                        htmlFor={`section-${section.id}`}
+                        htmlFor="include-files"
                         className="text-sm flex-1 cursor-pointer"
                       >
-                        {section.name}
+                        Files
                       </label>
-                      <span className="text-xs text-muted-foreground">
-                        ({section.wordCount.toLocaleString()} words)
-                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => setIsLessonPasteModalOpen(true)}
+                      >
+                        <ClipboardIcon className="h-3 w-3 mr-1" />
+                        Add from Clipboard
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          )}
-          {/* File tree - only show for lesson-connected videos */}
-          {!isStandalone && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 py-1 px-2">
-                <Checkbox
-                  id="include-files"
-                  checked={
-                    files.length === 0
-                      ? false
-                      : enabledFiles.size === files.length
-                        ? true
-                        : enabledFiles.size > 0
-                          ? "indeterminate"
-                          : false
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setEnabledFiles(new Set(files.map((f) => f.path)));
-                    } else {
-                      setEnabledFiles(new Set());
-                    }
-                  }}
-                />
-                <label
-                  htmlFor="include-files"
-                  className="text-sm flex-1 cursor-pointer"
-                >
-                  Files
-                </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7"
-                  onClick={() => setIsLessonPasteModalOpen(true)}
-                >
-                  <ClipboardIcon className="h-3 w-3 mr-1" />
-                  Add from Clipboard
-                </Button>
-              </div>
-              <FileTree
-                files={files}
-                enabledFiles={enabledFiles}
-                onEnabledFilesChange={setEnabledFiles}
-                onFileClick={handleFileClick}
-              />
-            </div>
-          )}
-          {/* Standalone file tree with management UI */}
-          {isStandalone && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 py-1 px-2">
-                <Checkbox
-                  id="include-standalone-files"
-                  checked={
-                    files.length === 0
-                      ? false
-                      : enabledFiles.size === files.length
-                        ? true
-                        : enabledFiles.size > 0
-                          ? "indeterminate"
-                          : false
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setEnabledFiles(new Set(files.map((f) => f.path)));
-                    } else {
-                      setEnabledFiles(new Set());
-                    }
-                  }}
-                />
-                <label
-                  htmlFor="include-standalone-files"
-                  className="text-sm flex-1 cursor-pointer"
-                >
-                  Files
-                </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7"
-                  onClick={() => setIsPasteModalOpen(true)}
-                >
-                  <ClipboardIcon className="h-3 w-3 mr-1" />
-                  Add from Clipboard
-                </Button>
-              </div>
-              <StandaloneFileTree
-                files={files}
-                enabledFiles={enabledFiles}
-                onEnabledFilesChange={setEnabledFiles}
-                onEditFile={handleEditFile}
-                onDeleteFile={handleDeleteFile}
-                onFileClick={handleFileClick}
-              />
-            </div>
-          )}
-          {/* Global links section */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 py-1 px-2">
-              <LinkIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm flex-1">Links</span>
-              <span className="text-xs text-muted-foreground">
-                ({links.length})
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setIsAddLinkModalOpen(true)}
-              >
-                <PlusIcon className="h-4 w-4" />
-              </Button>
-            </div>
-            {links.length > 0 ? (
-              <div className="space-y-1 px-2">
-                {links.map((link) => (
-                  <div
-                    key={link.id}
-                    className="flex items-start gap-2 py-1 px-2 rounded hover:bg-muted/50 group text-sm"
-                  >
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start gap-2 flex-1 min-w-0"
-                    >
-                      <ExternalLinkIcon className="h-3 w-3 mt-1 flex-shrink-0 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{link.title}</div>
-                        {link.description && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {link.description}
-                          </div>
-                        )}
-                      </div>
-                    </a>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 opacity-0 group-hover:opacity-100 flex-shrink-0"
-                      onClick={() => {
-                        deleteLinkFetcher.submit(null, {
-                          method: "post",
-                          action: `/api/links/${link.id}/delete`,
-                        });
-                      }}
-                    >
-                      <Trash2Icon className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                    </Button>
+                    <FileTree
+                      files={files}
+                      enabledFiles={enabledFiles}
+                      onEnabledFilesChange={setEnabledFiles}
+                      onFileClick={handleFileClick}
+                    />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 py-2 text-sm text-muted-foreground">
-                No links yet
+                )}
+                {/* Standalone file tree */}
+                {isStandalone && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 py-1 px-2">
+                      <Checkbox
+                        id="include-standalone-files"
+                        checked={
+                          files.length === 0
+                            ? false
+                            : enabledFiles.size === files.length
+                              ? true
+                              : enabledFiles.size > 0
+                                ? "indeterminate"
+                                : false
+                        }
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setEnabledFiles(new Set(files.map((f) => f.path)));
+                          } else {
+                            setEnabledFiles(new Set());
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="include-standalone-files"
+                        className="text-sm flex-1 cursor-pointer"
+                      >
+                        Files
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => setIsPasteModalOpen(true)}
+                      >
+                        <ClipboardIcon className="h-3 w-3 mr-1" />
+                        Add from Clipboard
+                      </Button>
+                    </div>
+                    <StandaloneFileTree
+                      files={files}
+                      enabledFiles={enabledFiles}
+                      onEnabledFilesChange={setEnabledFiles}
+                      onEditFile={handleEditFile}
+                      onDeleteFile={handleDeleteFile}
+                      onFileClick={handleFileClick}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            {sidebarTab === "links" && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 py-1 px-2">
+                  <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm flex-1">Links</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({links.length})
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setIsAddLinkModalOpen(true)}
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                {links.length > 0 ? (
+                  <div className="space-y-1 px-2">
+                    {links.map((link) => (
+                      <div
+                        key={link.id}
+                        className="flex items-start gap-2 py-1 px-2 rounded hover:bg-muted/50 group text-sm"
+                      >
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-2 flex-1 min-w-0"
+                        >
+                          <ExternalLinkIcon className="h-3 w-3 mt-1 flex-shrink-0 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">
+                              {link.title}
+                            </div>
+                            {link.description && (
+                              <div className="text-xs text-muted-foreground truncate">
+                                {link.description}
+                              </div>
+                            )}
+                          </div>
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          onClick={() => {
+                            deleteLinkFetcher.submit(null, {
+                              method: "post",
+                              action: `/api/links/${link.id}/delete`,
+                            });
+                          }}
+                        >
+                          <Trash2Icon className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-4 py-2 text-sm text-muted-foreground">
+                    No links yet
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1297,6 +1413,10 @@ export function InnerComponent(props: Route.ComponentProps) {
                             model,
                             includeTranscript: transcriptEnabled,
                             enabledSections: Array.from(enabledSections),
+                            courseStructure:
+                              includeCourseStructure && courseStructure
+                                ? courseStructure
+                                : undefined,
                           },
                         }
                       );

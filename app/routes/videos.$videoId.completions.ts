@@ -30,6 +30,18 @@ const modeSchema = Schema.Union(
 
 export type TextWritingAgentMode = Schema.Schema.Type<typeof modeSchema>;
 
+const courseStructureSchema = Schema.Struct({
+  repoName: Schema.String,
+  currentSectionPath: Schema.String,
+  currentLessonPath: Schema.String,
+  sections: Schema.Array(
+    Schema.Struct({
+      path: Schema.String,
+      lessons: Schema.Array(Schema.Struct({ path: Schema.String })),
+    })
+  ),
+});
+
 const chatSchema = Schema.Struct({
   messages: Schema.Any,
   enabledFiles: Schema.Array(Schema.String),
@@ -41,6 +53,7 @@ const chatSchema = Schema.Struct({
   enabledSections: Schema.optionalWith(Schema.Array(Schema.String), {
     default: () => [],
   }),
+  courseStructure: Schema.optional(courseStructureSchema),
 });
 
 export const action = async (args: Route.ActionArgs) => {
@@ -67,6 +80,27 @@ export const action = async (args: Route.ActionArgs) => {
     const db = yield* DBService;
     const links = yield* db.getLinks();
 
+    // Format course structure as indented text tree
+    let courseStructureText: string | undefined;
+    if (parsed.courseStructure) {
+      const cs = parsed.courseStructure;
+      const lines: string[] = [`Course: ${cs.repoName}`];
+      for (const section of cs.sections) {
+        const isCurrent = section.path === cs.currentSectionPath;
+        lines.push(
+          `  ${section.path}/${isCurrent ? "  <-- current section" : ""}`
+        );
+        for (const lesson of section.lessons) {
+          const isCurrentLesson =
+            isCurrent && lesson.path === cs.currentLessonPath;
+          lines.push(
+            `    ${lesson.path}/${isCurrentLesson ? "  <-- current lesson" : ""}`
+          );
+        }
+      }
+      courseStructureText = lines.join("\n");
+    }
+
     const modelMessages = createModelMessagesForTextWritingAgent({
       messages,
       imageFiles: videoContext.imageFiles,
@@ -81,6 +115,7 @@ export const action = async (args: Route.ActionArgs) => {
       youtubeChapters: videoContext.youtubeChapters,
       sectionNames: videoContext.sectionNames,
       links,
+      courseStructure: courseStructureText,
     });
 
     const result = agent.stream({

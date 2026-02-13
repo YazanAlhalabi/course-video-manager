@@ -25,7 +25,8 @@ const modeSchema = Schema.Union(
   Schema.Literal("newsletter"),
   Schema.Literal("interview-prep"),
   Schema.Literal("interview"),
-  Schema.Literal("brainstorming")
+  Schema.Literal("brainstorming"),
+  Schema.Literal("lesson-scoping")
 );
 
 export type TextWritingAgentMode = Schema.Schema.Type<typeof modeSchema>;

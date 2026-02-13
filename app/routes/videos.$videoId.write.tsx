@@ -75,6 +75,7 @@ import {
   Trash2Icon,
   LinkIcon,
   ExternalLinkIcon,
+  CrosshairIcon,
 } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -397,6 +398,7 @@ const modeToLabel: Record<Mode, string> = {
   "interview-prep": "Interview Me (Pre-Interview)",
   interview: "Interview Me (Live)",
   brainstorming: "Brainstorming",
+  "lesson-scoping": "Lesson Scoping",
 };
 
 const MODE_STORAGE_KEY = "article-writer-mode";
@@ -481,6 +483,14 @@ export function InnerComponent(props: Route.ComponentProps) {
             .map((f) => f.path)
         )
       );
+    }
+
+    // Auto-enable course structure for lesson scoping
+    if (newMode === "lesson-scoping" && courseStructure) {
+      setIncludeCourseStructure(true);
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(COURSE_STRUCTURE_STORAGE_KEY, "true");
+      }
     }
   };
 
@@ -1286,6 +1296,18 @@ export function InnerComponent(props: Route.ComponentProps) {
                         </div>
                       </div>
                     </SelectItem>
+                    <SelectItem value="lesson-scoping">
+                      <div className="flex items-start gap-2">
+                        <CrosshairIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div>Lesson Scoping</div>
+                          <div className="text-xs text-muted-foreground">
+                            Scope a lesson with an opinionated curriculum
+                            facilitator
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <Select
@@ -1316,7 +1338,8 @@ export function InnerComponent(props: Route.ComponentProps) {
                 </Select>
                 {mode === "interview-prep" ||
                 mode === "interview" ||
-                mode === "brainstorming" ? (
+                mode === "brainstorming" ||
+                mode === "lesson-scoping" ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

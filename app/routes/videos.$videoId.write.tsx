@@ -34,6 +34,13 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import {
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -57,18 +64,10 @@ import {
   FilmIcon,
   FileTextIcon,
   ListChecksIcon,
-  GraduationCapIcon,
-  RefreshCwIcon,
-  SearchIcon,
   VideoIcon,
-  ImageIcon,
-  AlignLeftIcon,
   ClipboardIcon,
-  MailIcon,
   AlertTriangleIcon,
   MicIcon,
-  LightbulbIcon,
-  ListTreeIcon,
   RadioIcon,
   FileTypeIcon,
   SettingsIcon,
@@ -1186,181 +1185,223 @@ export function InnerComponent(props: Route.ComponentProps) {
           <div className="border-t p-4 bg-background">
             <div className="max-w-2xl mx-auto">
               <div className="mb-4 flex gap-2 items-center">
-                <Select
-                  value={mode}
-                  onValueChange={(value) => handleModeChange(value as Mode)}
-                >
-                  <SelectTrigger>{modeToLabel[mode]}</SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="article">
-                      <div className="flex items-start gap-2">
-                        <FileTextIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Article</div>
-                          <div className="text-xs text-muted-foreground">
-                            Educational content and explanations
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="article-plan">
-                      <div className="flex items-start gap-2">
-                        <ListTreeIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Article Plan</div>
-                          <div className="text-xs text-muted-foreground">
-                            Plan article structure with concise bullet points
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="project">
-                      <div className="flex items-start gap-2">
-                        <ListChecksIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Steps - Project</div>
-                          <div className="text-xs text-muted-foreground">
-                            Write steps for project
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="skill-building">
-                      <div className="flex items-start gap-2">
-                        <GraduationCapIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Steps - Skill Building</div>
-                          <div className="text-xs text-muted-foreground">
-                            Write steps for skill building problem
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="style-guide-skill-building">
-                      <div className="flex items-start gap-2">
-                        <RefreshCwIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Style Guide Pass - Skill Building</div>
-                          <div className="text-xs text-muted-foreground">
-                            Refine existing skill-building steps with style
-                            guide
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="style-guide-project">
-                      <div className="flex items-start gap-2">
-                        <RefreshCwIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Style Guide Pass - Project</div>
-                          <div className="text-xs text-muted-foreground">
-                            Refine existing project steps with style guide
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="seo-description">
-                      <div className="flex items-start gap-2">
-                        <SearchIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>SEO Description</div>
-                          <div className="text-xs text-muted-foreground">
-                            Generate SEO description (max 160 characters)
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="youtube-title">
-                      <div className="flex items-start gap-2">
-                        <VideoIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>YouTube Title</div>
-                          <div className="text-xs text-muted-foreground">
-                            Generate engaging YouTube video title
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="youtube-thumbnail">
-                      <div className="flex items-start gap-2">
-                        <ImageIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>YouTube Thumbnail</div>
-                          <div className="text-xs text-muted-foreground">
-                            Generate YouTube thumbnail description
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="youtube-description">
-                      <div className="flex items-start gap-2">
-                        <AlignLeftIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>YouTube Description</div>
-                          <div className="text-xs text-muted-foreground">
-                            Generate YouTube video description with timestamps
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="newsletter">
-                      <div className="flex items-start gap-2">
-                        <MailIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Newsletter</div>
-                          <div className="text-xs text-muted-foreground">
-                            Generate friendly newsletter preview for AI Hero
-                            audience
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="interview-prep">
-                      <div className="flex items-start gap-2">
-                        <MicIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Interview Me</div>
-                          <div className="text-xs text-muted-foreground">
-                            Pre-interview chat to agree on scope, then go live
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="brainstorming">
-                      <div className="flex items-start gap-2">
-                        <LightbulbIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Brainstorming</div>
-                          <div className="text-xs text-muted-foreground">
-                            Explore and develop ideas with an AI facilitator
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="scoping-discussion">
-                      <div className="flex items-start gap-2">
-                        <CrosshairIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Scoping Discussion</div>
-                          <div className="text-xs text-muted-foreground">
-                            Open-ended discussion to scope a lesson
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="scoping-document">
-                      <div className="flex items-start gap-2">
-                        <FileTextIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div>Scoping Document</div>
-                          <div className="text-xs text-muted-foreground">
-                            Generate a concise scoping document for recording
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="justify-between min-w-[180px]"
+                    >
+                      {modeToLabel[mode]}
+                      <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    {/* Writing */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <FileTextIcon className="h-4 w-4 mr-2" />
+                        Writing
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        <DropdownMenuRadioGroup
+                          value={mode}
+                          onValueChange={(value) =>
+                            handleModeChange(value as Mode)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="article">
+                            <div>
+                              <div>Article</div>
+                              <div className="text-xs text-muted-foreground">
+                                Educational content and explanations
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="article-plan">
+                            <div>
+                              <div>Article Plan</div>
+                              <div className="text-xs text-muted-foreground">
+                                Plan structure with concise bullet points
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="newsletter">
+                            <div>
+                              <div>Newsletter</div>
+                              <div className="text-xs text-muted-foreground">
+                                Friendly preview for AI Hero audience
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    {/* Exercise Steps */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <ListChecksIcon className="h-4 w-4 mr-2" />
+                        Exercise Steps
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        <DropdownMenuRadioGroup
+                          value={mode}
+                          onValueChange={(value) =>
+                            handleModeChange(value as Mode)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="project">
+                            <div>
+                              <div>Project Steps</div>
+                              <div className="text-xs text-muted-foreground">
+                                Write steps for project
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="skill-building">
+                            <div>
+                              <div>Skill Building Steps</div>
+                              <div className="text-xs text-muted-foreground">
+                                Write steps for skill building problem
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="style-guide-skill-building">
+                            <div>
+                              <div>Style Guide - Skill Building</div>
+                              <div className="text-xs text-muted-foreground">
+                                Refine existing skill-building steps
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="style-guide-project">
+                            <div>
+                              <div>Style Guide - Project</div>
+                              <div className="text-xs text-muted-foreground">
+                                Refine existing project steps
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    {/* YouTube & SEO */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <VideoIcon className="h-4 w-4 mr-2" />
+                        YouTube & SEO
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        <DropdownMenuRadioGroup
+                          value={mode}
+                          onValueChange={(value) =>
+                            handleModeChange(value as Mode)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="youtube-title">
+                            <div>
+                              <div>YouTube Title</div>
+                              <div className="text-xs text-muted-foreground">
+                                Generate engaging video title
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="youtube-thumbnail">
+                            <div>
+                              <div>YouTube Thumbnail</div>
+                              <div className="text-xs text-muted-foreground">
+                                Generate thumbnail description
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="youtube-description">
+                            <div>
+                              <div>YouTube Description</div>
+                              <div className="text-xs text-muted-foreground">
+                                Generate description with timestamps
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="seo-description">
+                            <div>
+                              <div>SEO Description</div>
+                              <div className="text-xs text-muted-foreground">
+                                Generate SEO description (max 160 chars)
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    {/* Planning */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <CrosshairIcon className="h-4 w-4 mr-2" />
+                        Planning
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        <DropdownMenuRadioGroup
+                          value={mode}
+                          onValueChange={(value) =>
+                            handleModeChange(value as Mode)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="brainstorming">
+                            <div>
+                              <div>Brainstorming</div>
+                              <div className="text-xs text-muted-foreground">
+                                Explore ideas with an AI facilitator
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="scoping-discussion">
+                            <div>
+                              <div>Scoping Discussion</div>
+                              <div className="text-xs text-muted-foreground">
+                                Open-ended discussion to scope a lesson
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="scoping-document">
+                            <div>
+                              <div>Scoping Document</div>
+                              <div className="text-xs text-muted-foreground">
+                                Generate concise scoping document
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    {/* Interview */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <MicIcon className="h-4 w-4 mr-2" />
+                        Interview
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        <DropdownMenuRadioGroup
+                          value={mode}
+                          onValueChange={(value) =>
+                            handleModeChange(value as Mode)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="interview-prep">
+                            <div>
+                              <div>Interview Me</div>
+                              <div className="text-xs text-muted-foreground">
+                                Pre-interview chat, then go live
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Select
                   value={model}
                   onValueChange={(value) => handleModelChange(value as Model)}

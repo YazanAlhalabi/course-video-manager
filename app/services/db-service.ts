@@ -1268,6 +1268,76 @@ export class DBService extends Effect.Service<DBService>()("DBService", {
 
         return null;
       }),
+      /**
+       * Gets the next lesson that has no videos, starting from the current video's lesson.
+       * Returns lesson info if found, null if no such lesson exists.
+       */
+      getNextLessonWithoutVideo: Effect.fn("getNextLessonWithoutVideo")(
+        function* (currentVideoId: string) {
+          const currentVideo = yield* getVideoWithClipsById(currentVideoId);
+          const currentLesson = currentVideo.lesson;
+          if (!currentLesson) return null; // Standalone videos have no next/prev
+
+          const currentSection = currentLesson.section;
+          const repo = currentSection.repoVersion.repo;
+
+          // Need to get all sections and lessons to find next lesson without video
+          const repoWithVersions = yield* getRepoWithSectionsById(repo.id);
+          const latestVersionSections =
+            repoWithVersions.versions[0]?.sections ?? [];
+
+          // Find current lesson in the structure
+          for (let sIdx = 0; sIdx < latestVersionSections.length; sIdx++) {
+            const section = latestVersionSections[sIdx]!;
+            for (let lIdx = 0; lIdx < section.lessons.length; lIdx++) {
+              const lesson = section.lessons[lIdx]!;
+              if (lesson.id === currentLesson.id) {
+                // Search for next lesson with no videos, starting from next lesson
+                // First check remaining lessons in current section
+                for (
+                  let nextLIdx = lIdx + 1;
+                  nextLIdx < section.lessons.length;
+                  nextLIdx++
+                ) {
+                  const nextLesson = section.lessons[nextLIdx]!;
+                  if (nextLesson.videos.length === 0) {
+                    return {
+                      lessonId: nextLesson.id,
+                      lessonPath: nextLesson.path,
+                      sectionPath: section.path,
+                      repoFilePath: repo.filePath,
+                    };
+                  }
+                }
+
+                // Then check lessons in subsequent sections
+                for (
+                  let nextSIdx = sIdx + 1;
+                  nextSIdx < latestVersionSections.length;
+                  nextSIdx++
+                ) {
+                  const nextSection = latestVersionSections[nextSIdx]!;
+                  for (const nextLesson of nextSection.lessons) {
+                    if (nextLesson.videos.length === 0) {
+                      return {
+                        lessonId: nextLesson.id,
+                        lessonPath: nextLesson.path,
+                        sectionPath: nextSection.path,
+                        repoFilePath: repo.filePath,
+                      };
+                    }
+                  }
+                }
+
+                // No lesson without video found
+                return null;
+              }
+            }
+          }
+
+          return null;
+        }
+      ),
       // Version-related methods
       getRepoVersions: Effect.fn("getRepoVersions")(function* (repoId: string) {
         const versions = yield* makeDbCall(() =>

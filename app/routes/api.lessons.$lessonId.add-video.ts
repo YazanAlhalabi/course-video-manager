@@ -25,6 +25,12 @@ export const action = async (args: Route.ActionArgs) => {
       originalFootagePath: "",
     });
 
+    // Check for redirectTo query param to override default redirect
+    const url = new URL(args.request.url);
+    const redirectTo = url.searchParams.get("redirectTo");
+    if (redirectTo === "write") {
+      return redirect(`/videos/${video.id}/write`);
+    }
     return redirect(`/videos/${video.id}/edit`);
   }).pipe(
     withDatabaseDump,

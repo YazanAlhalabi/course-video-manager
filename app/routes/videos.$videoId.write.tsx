@@ -92,6 +92,7 @@ import { DeleteStandaloneFileModal } from "@/components/delete-standalone-file-m
 import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
 import { FilePreviewModal } from "@/components/file-preview-modal";
 import { AddLinkModal } from "@/components/add-link-modal";
+import { AddVideoToNextLessonModal } from "@/components/add-video-to-next-lesson-modal";
 import { useLint } from "@/hooks/use-lint";
 import { useBannedPhrases } from "@/hooks/use-banned-phrases";
 import { BannedPhrasesModal } from "@/components/banned-phrases-modal";
@@ -270,6 +271,12 @@ export const loader = async (args: Route.LoaderArgs) => {
             lessons: { path: string }[];
           }[];
         },
+        nextLessonWithoutVideo: null as null | {
+          lessonId: string;
+          lessonPath: string;
+          sectionPath: string;
+          hasExplainerFolder: boolean;
+        },
       };
     }
 
@@ -323,6 +330,16 @@ export const loader = async (args: Route.LoaderArgs) => {
     const nextVideoId = yield* db.getNextVideoId(videoId);
     const previousVideoId = yield* db.getPreviousVideoId(videoId);
 
+    // Get next lesson without video (for "add video to next lesson" modal)
+    const nextLessonWithoutVideo = yield* db.getNextLessonWithoutVideo(videoId);
+
+    // Check if next lesson has explainer folder
+    let nextLessonHasExplainerFolder = false;
+    if (nextLessonWithoutVideo) {
+      const explainerPath = `${nextLessonWithoutVideo.repoFilePath}/${nextLessonWithoutVideo.sectionPath}/${nextLessonWithoutVideo.lessonPath}/explainer`;
+      nextLessonHasExplainerFolder = yield* fs.exists(explainerPath);
+    }
+
     // Fetch course structure for non-standalone videos
     const repoWithSections = yield* db.getRepoWithSectionsById(
       section.repoVersion.repoId
@@ -357,6 +374,14 @@ export const loader = async (args: Route.LoaderArgs) => {
       clipSections: sectionsWithWordCount,
       links: globalLinks,
       courseStructure,
+      nextLessonWithoutVideo: nextLessonWithoutVideo
+        ? {
+            lessonId: nextLessonWithoutVideo.lessonId,
+            lessonPath: nextLessonWithoutVideo.lessonPath,
+            sectionPath: nextLessonWithoutVideo.sectionPath,
+            hasExplainerFolder: nextLessonHasExplainerFolder,
+          }
+        : null,
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -422,6 +447,7 @@ export function InnerComponent(props: Route.ComponentProps) {
     clipSections,
     links,
     courseStructure,
+    nextLessonWithoutVideo,
   } = props.loaderData;
   const [text, setText] = useState<string>("");
   const [mode, setMode] = useState<Mode>(() => {
@@ -456,6 +482,8 @@ export function InnerComponent(props: Route.ComponentProps) {
   });
 
   const [sidebarTab, setSidebarTab] = useState<"context" | "links">("context");
+  const [isAddVideoToNextLessonModalOpen, setIsAddVideoToNextLessonModalOpen] =
+    useState(false);
   const [includeCourseStructure, setIncludeCourseStructure] = useState(() => {
     if (typeof localStorage !== "undefined") {
       return localStorage.getItem(COURSE_STRUCTURE_STORAGE_KEY) === "true";
@@ -790,6 +818,15 @@ export function InnerComponent(props: Route.ComponentProps) {
                 Next
                 <ChevronRightIcon className="size-4 ml-1" />
               </Link>
+            </Button>
+          ) : nextLessonWithoutVideo ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAddVideoToNextLessonModalOpen(true)}
+            >
+              Next
+              <ChevronRightIcon className="size-4 ml-1" />
             </Button>
           ) : null}
         </div>
@@ -1661,6 +1698,17 @@ export function InnerComponent(props: Route.ComponentProps) {
         open={isAddLinkModalOpen}
         onOpenChange={setIsAddLinkModalOpen}
       />
+      {/* Add video to next lesson modal */}
+      {nextLessonWithoutVideo && (
+        <AddVideoToNextLessonModal
+          lessonId={nextLessonWithoutVideo.lessonId}
+          lessonPath={nextLessonWithoutVideo.lessonPath}
+          sectionPath={nextLessonWithoutVideo.sectionPath}
+          hasExplainerFolder={nextLessonWithoutVideo.hasExplainerFolder}
+          open={isAddVideoToNextLessonModalOpen}
+          onOpenChange={setIsAddVideoToNextLessonModalOpen}
+        />
+      )}
     </div>
   );
 }

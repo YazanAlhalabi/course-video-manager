@@ -15,6 +15,8 @@ Complete implementation workflow from exploration to commit.
 
 If you're touching code that interacts with the database, follow the [DB TDD workflow](DB-TDD.md).
 
+If you're touching frontend code with complex state (creating/modifying reducers, complex state transitions, non-trivial state management), follow the [Frontend TDD workflow](FRONTEND-TDD.md).
+
 ### Phase 3: Feedback Loops
 
 Run each check, fix issues, and re-run until clean. Do these sequentially:

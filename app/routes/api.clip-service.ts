@@ -58,7 +58,7 @@ export const action = async (args: Route.ActionArgs) => {
       handleClipServiceEvent(db as any, event as ClipServiceEvent, ttCli)
     );
 
-    return result;
+    return result ?? null;
   }).pipe(
     withDatabaseDump,
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),

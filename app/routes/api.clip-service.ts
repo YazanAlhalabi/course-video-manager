@@ -6,7 +6,10 @@
  */
 
 import * as schema from "@/db/schema";
-import { handleClipServiceEvent } from "@/services/clip-service-handler";
+import {
+  handleClipServiceEvent,
+  type TtCliAdapter,
+} from "@/services/clip-service-handler";
 import {
   ClipServiceEventSchema,
   type ClipServiceEvent,
@@ -14,6 +17,7 @@ import {
 import { DBFunctionsService } from "@/services/db-service";
 import { withDatabaseDump } from "@/services/dump-service";
 import { runtimeLive } from "@/services/layer";
+import { TotalTypeScriptCLIService } from "@/services/tt-cli-service";
 import { Console, Effect, Schema } from "effect";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { data } from "react-router";
@@ -39,10 +43,19 @@ export const action = async (args: Route.ActionArgs) => {
     // Parse and validate the event
     const event = yield* Schema.decodeUnknown(ClipServiceEventSchema)(json);
 
+    // Get TotalTypeScriptCLIService for OBS operations
+    const ttCliService = yield* TotalTypeScriptCLIService;
+
+    // Create adapter that wraps Effect-based CLI service
+    const ttCli: TtCliAdapter = {
+      getLatestOBSVideoClips: (opts) =>
+        ttCliService.getLatestOBSVideoClips(opts).pipe(runtimeLive.runPromise),
+    };
+
     // Get database and handle the event
     const db = getDatabase();
     const result = yield* Effect.promise(() =>
-      handleClipServiceEvent(db as any, event as ClipServiceEvent)
+      handleClipServiceEvent(db as any, event as ClipServiceEvent, ttCli)
     );
 
     return result;

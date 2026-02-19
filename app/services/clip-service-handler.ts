@@ -27,6 +27,39 @@ import {
 
 type DrizzleDB = PgliteDatabase<typeof schema>;
 
+/**
+ * Adapter for TotalTypeScriptCLIService functionality.
+ * In production, this wraps the Effect-based service.
+ * In tests, this is mocked.
+ */
+export interface TtCliAdapter {
+  getLatestOBSVideoClips: (opts: {
+    filePath: string | undefined;
+    startTime: number | undefined;
+  }) => Promise<{
+    readonly clips: ReadonlyArray<{
+      readonly inputVideo: string;
+      readonly startTime: number;
+      readonly endTime: number;
+    }>;
+  }>;
+}
+
+// ============================================================================
+// Helper: Windows to WSL path conversion
+// ============================================================================
+
+function windowsToWSL(windowsPath: string): string {
+  // Convert C:\Users\... to /mnt/c/Users/...
+  const drive = windowsPath.charAt(0).toLowerCase();
+  const pathWithoutDrive = windowsPath.slice(3); // Remove "C:\"
+
+  // Convert backslashes to forward slashes
+  const unixPath = pathWithoutDrive.replace(/\\/g, "/");
+
+  return `/mnt/${drive}/${unixPath}`;
+}
+
 // ============================================================================
 // Helper: Get all items for a video sorted by order
 // ============================================================================
@@ -63,10 +96,15 @@ async function getOrderedItems(db: DrizzleDB, videoId: string) {
 /**
  * Handles a ClipServiceEvent by dispatching to the appropriate database operation.
  * This is the core business logic that both HTTP and direct transports use.
+ *
+ * @param db - Drizzle database instance
+ * @param event - The event to handle
+ * @param ttCli - Optional TotalTypeScriptCLI adapter (required for append-from-obs)
  */
 export async function handleClipServiceEvent(
   db: DrizzleDB,
-  event: ClipServiceEvent
+  event: ClipServiceEvent,
+  ttCli?: TtCliAdapter
 ): Promise<unknown> {
   switch (event.type) {
     case "create-video": {
@@ -174,9 +212,75 @@ export async function handleClipServiceEvent(
     }
 
     case "append-from-obs": {
-      // TODO: Implement OBS append flow
-      // This will be implemented in a later task
-      throw new Error("Not implemented: append-from-obs");
+      if (!ttCli) {
+        throw new Error("TtCliAdapter is required for append-from-obs");
+      }
+
+      const { videoId, filePath, insertionPoint } = event.input;
+
+      // Convert Windows path to WSL path if provided
+      const resolvedFilePath = filePath ? windowsToWSL(filePath) : undefined;
+
+      // Get all clips (including archived) to find the last clip with this input video
+      const allClipsIncludingArchived = await db.query.clips.findMany({
+        where: eq(clips.videoId, videoId),
+      });
+
+      // Find clips with this input video and get the one with the latest end time
+      const clipsWithThisInputVideo = allClipsIncludingArchived
+        .filter((clip) => clip.videoFilename === resolvedFilePath)
+        .sort((a, b) => b.sourceStartTime - a.sourceStartTime);
+
+      const lastClipWithThisInputVideo = clipsWithThisInputVideo[0];
+
+      // Calculate start time: end time of last clip - 1 second for silence gap
+      const resolvedStartTime =
+        typeof lastClipWithThisInputVideo?.sourceEndTime === "number"
+          ? Math.max(lastClipWithThisInputVideo.sourceEndTime - 1, 0)
+          : undefined;
+
+      // Call CLI to detect clips
+      const latestOBSVideoClips = await ttCli.getLatestOBSVideoClips({
+        filePath: resolvedFilePath,
+        startTime: resolvedStartTime,
+      });
+
+      if (latestOBSVideoClips.clips.length === 0) {
+        return [];
+      }
+
+      // Re-fetch clips for deduplication (in case they changed during CLI detection)
+      const allClipsForDedup = await db.query.clips.findMany({
+        where: eq(clips.videoId, videoId),
+      });
+
+      // Filter out clips that already exist (deduplicate by videoFilename + startTime + endTime)
+      const clipsToAdd = latestOBSVideoClips.clips.filter(
+        (clip) =>
+          !allClipsForDedup.some(
+            (existingClip) =>
+              existingClip.videoFilename === clip.inputVideo &&
+              existingClip.sourceStartTime === clip.startTime &&
+              existingClip.sourceEndTime === clip.endTime
+          )
+      );
+
+      if (clipsToAdd.length === 0) {
+        return [];
+      }
+
+      // Insert clips at the specified insertion point
+      // Reuse the append-clips logic by recursively calling the handler
+      const appendClipsEvent: ClipServiceEvent = {
+        type: "append-clips",
+        input: {
+          videoId,
+          insertionPoint,
+          clips: clipsToAdd,
+        },
+      };
+
+      return handleClipServiceEvent(db, appendClipsEvent, ttCli);
     }
 
     case "archive-clips": {
@@ -447,10 +551,16 @@ export async function handleClipServiceEvent(
 /**
  * Creates a ClipService that calls the handler directly with the provided
  * database instance. Used for testing with PGlite.
+ *
+ * @param db - Drizzle database instance
+ * @param ttCli - Optional TotalTypeScriptCLI adapter for OBS functionality
  */
-export function createDirectClipService(db: DrizzleDB): ClipService {
+export function createDirectClipService(
+  db: DrizzleDB,
+  ttCli?: TtCliAdapter
+): ClipService {
   const send = async (event: ClipServiceEvent): Promise<unknown> => {
-    return handleClipServiceEvent(db, event);
+    return handleClipServiceEvent(db, event, ttCli);
   };
 
   return createClipService(send);

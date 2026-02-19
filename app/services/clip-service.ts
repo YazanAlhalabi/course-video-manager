@@ -12,6 +12,7 @@
 
 import type { InferSelectModel } from "drizzle-orm";
 import type { clips, clipSections, videos } from "@/db/schema";
+import { Schema } from "effect";
 
 // ============================================================================
 // Database Types
@@ -151,8 +152,8 @@ export type ClipServiceEvent =
   | { type: "get-timeline"; videoId: string }
   | { type: "append-clips"; input: AppendClipsInput }
   | { type: "append-from-obs"; input: AppendFromObsInput }
-  | { type: "archive-clips"; clipIds: string[] }
-  | { type: "update-clips"; clips: UpdateClipInput[] }
+  | { type: "archive-clips"; clipIds: readonly string[] }
+  | { type: "update-clips"; clips: readonly UpdateClipInput[] }
   | { type: "update-beat"; clipId: string; beatType: string }
   | { type: "reorder-clip"; clipId: string; direction: ReorderDirection }
   | {
@@ -164,7 +165,7 @@ export type ClipServiceEvent =
       input: CreateClipSectionAtPositionInput;
     }
   | { type: "update-clip-section"; clipSectionId: string; name: string }
-  | { type: "archive-clip-sections"; clipSectionIds: string[] }
+  | { type: "archive-clip-sections"; clipSectionIds: readonly string[] }
   | {
       type: "reorder-clip-section";
       clipSectionId: string;
@@ -253,4 +254,168 @@ export function createClipService(send: ClipServiceTransport): ClipService {
       await send({ type: "reorder-clip-section", clipSectionId, direction });
     },
   };
+}
+
+// ============================================================================
+// Schema Definitions (for route validation)
+// ============================================================================
+
+const InsertionPointSchema = Schema.Union(
+  Schema.Struct({
+    type: Schema.Literal("start"),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("after-clip"),
+    databaseClipId: Schema.String,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("after-clip-section"),
+    clipSectionId: Schema.String,
+  })
+);
+
+const ReorderDirectionSchema = Schema.Union(
+  Schema.Literal("up"),
+  Schema.Literal("down")
+);
+
+const PositionSchema = Schema.Union(
+  Schema.Literal("before"),
+  Schema.Literal("after")
+);
+
+const TargetItemTypeSchema = Schema.Union(
+  Schema.Literal("clip"),
+  Schema.Literal("clip-section")
+);
+
+const ClipInputSchema = Schema.Struct({
+  inputVideo: Schema.String,
+  startTime: Schema.Number,
+  endTime: Schema.Number,
+});
+
+const AppendClipsInputSchema = Schema.Struct({
+  videoId: Schema.String,
+  insertionPoint: InsertionPointSchema,
+  clips: Schema.Array(ClipInputSchema),
+});
+
+const AppendFromObsInputSchema = Schema.Struct({
+  videoId: Schema.String,
+  filePath: Schema.optional(Schema.String),
+  insertionPoint: InsertionPointSchema,
+});
+
+const UpdateClipInputSchema = Schema.Struct({
+  id: Schema.String,
+  scene: Schema.String,
+  profile: Schema.String,
+  beatType: Schema.String,
+});
+
+const CreateClipSectionAtInsertionPointInputSchema = Schema.Struct({
+  videoId: Schema.String,
+  name: Schema.String,
+  insertionPoint: InsertionPointSchema,
+});
+
+const CreateClipSectionAtPositionInputSchema = Schema.Struct({
+  videoId: Schema.String,
+  name: Schema.String,
+  position: PositionSchema,
+  targetItemId: Schema.String,
+  targetItemType: TargetItemTypeSchema,
+});
+
+/**
+ * Schema for validating ClipServiceEvent in the route handler.
+ * This is a discriminated union matching all possible event types.
+ */
+export const ClipServiceEventSchema = Schema.Union(
+  Schema.Struct({
+    type: Schema.Literal("create-video"),
+    path: Schema.String,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("get-timeline"),
+    videoId: Schema.String,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("append-clips"),
+    input: AppendClipsInputSchema,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("append-from-obs"),
+    input: AppendFromObsInputSchema,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("archive-clips"),
+    clipIds: Schema.Array(Schema.String),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-clips"),
+    clips: Schema.Array(UpdateClipInputSchema),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-beat"),
+    clipId: Schema.String,
+    beatType: Schema.String,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("reorder-clip"),
+    clipId: Schema.String,
+    direction: ReorderDirectionSchema,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("create-clip-section-at-insertion-point"),
+    input: CreateClipSectionAtInsertionPointInputSchema,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("create-clip-section-at-position"),
+    input: CreateClipSectionAtPositionInputSchema,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-clip-section"),
+    clipSectionId: Schema.String,
+    name: Schema.String,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("archive-clip-sections"),
+    clipSectionIds: Schema.Array(Schema.String),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("reorder-clip-section"),
+    clipSectionId: Schema.String,
+    direction: ReorderDirectionSchema,
+  })
+);
+
+// ============================================================================
+// HTTP Transport Factory (for frontend)
+// ============================================================================
+
+/**
+ * Creates a ClipService that sends events to the /api/clip-service route.
+ * This is the transport used in production by the frontend.
+ */
+export function createHttpClipService(): ClipService {
+  const send = async (event: ClipServiceEvent): Promise<unknown> => {
+    const response = await fetch("/api/clip-service", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(event),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`ClipService request failed: ${response.status} ${text}`);
+    }
+
+    return response.json();
+  };
+
+  return createClipService(send);
 }

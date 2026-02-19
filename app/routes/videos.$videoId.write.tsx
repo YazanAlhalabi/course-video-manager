@@ -1,6 +1,7 @@
 "use client";
 
 import { DBFunctionsService } from "@/services/db-service";
+import { sortByOrder } from "@/lib/sort-by-order";
 import { runtimeLive } from "@/services/layer";
 import type {
   SectionWithWordCount,
@@ -147,9 +148,7 @@ export const loader = async (args: Route.LoaderArgs) => {
       })
     );
 
-    const sortedItems = [...clipItems, ...clipSectionItems].sort((a, b) =>
-      a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-    );
+    const sortedItems = sortByOrder([...clipItems, ...clipSectionItems]);
 
     // Build formatted transcript with sections as H2 headers
     const transcriptParts: string[] = [];

@@ -26,6 +26,7 @@ import { INSERTION_POINT_ID } from "@/features/video-editor/constants";
 import { data } from "react-router";
 import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
 import { Array as EffectArray } from "effect";
+import { sortByOrder } from "@/lib/sort-by-order";
 import path from "node:path";
 import {
   ALWAYS_EXCLUDED_DIRECTORIES,
@@ -75,13 +76,7 @@ export const loader = async (args: Route.LoaderArgs) => {
       data: clipSection,
     }));
 
-    // Sort using ASCII ordering to match PostgreSQL COLLATE "C" behavior.
-    // fractional-indexing generates keys like "Zz" to sort before "a0",
-    // which requires byte ordering (where 'Z' (90) < 'a' (97)).
-    // localeCompare() uses locale-aware sorting which doesn't match this.
-    const sortedItems = [...clipItems, ...clipSectionItems].sort((a, b) =>
-      a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-    );
+    const sortedItems = sortByOrder([...clipItems, ...clipSectionItems]);
 
     // Get standalone video files directory
     const standaloneVideoDir = getStandaloneVideoFilePath(videoId);

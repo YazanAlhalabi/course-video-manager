@@ -1,3 +1,4 @@
+import { sortByOrder } from "@/lib/sort-by-order";
 import { generateArticlePrompt } from "@/prompts/generate-article";
 import { generateArticlePlanPrompt } from "@/prompts/generate-article-plan";
 import { generateStepsToCompleteForProjectPrompt } from "@/prompts/generate-steps-to-complete-for-project";
@@ -442,14 +443,16 @@ export const acquireTextWritingContext = Effect.fn("acquireVideoContext")(
           order: section.order,
           section,
         })),
-      ].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+      ];
+
+      const sortedAllItems = sortByOrder(allItems);
 
       // Build formatted transcript with sections as H2 headers
       const transcriptParts: string[] = [];
       let currentParagraph: string[] = [];
       let currentSectionEnabled = allSectionsEnabled; // If no sections exist, include clips before first section
 
-      for (const item of allItems) {
+      for (const item of sortedAllItems) {
         if (item.type === "clip-section") {
           // Flush current paragraph before starting a new section
           if (currentParagraph.length > 0 && currentSectionEnabled) {
@@ -491,9 +494,11 @@ export const acquireTextWritingContext = Effect.fn("acquireVideoContext")(
         order: section.order,
         section,
       })),
-    ].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+    ];
 
-    for (const item of allItems) {
+    const sortedAllItems = sortByOrder(allItems);
+
+    for (const item of sortedAllItems) {
       if (item.type === "clip-section") {
         // Record the timestamp at the start of this clip section
         youtubeChapters.push({

@@ -7,6 +7,7 @@ import { Effect, Layer } from "effect";
 import { pushSchema } from "drizzle-kit/api";
 import { DBFunctionsService } from "@/services/db-service";
 import { DrizzleService } from "@/services/drizzle-service";
+import { sortByOrder } from "@/lib/sort-by-order";
 
 let pglite: PGlite;
 let testDb: ReturnType<typeof drizzle<typeof schema>>;
@@ -48,7 +49,7 @@ describe("appendClips", () => {
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
       const video = yield* db.getVideoWithClipsById(videoId);
-      return [
+      return sortByOrder([
         ...video.clips.map((c: any) => ({
           type: "clip" as const,
           id: c.id,
@@ -59,9 +60,7 @@ describe("appendClips", () => {
           id: s.id,
           order: s.order,
         })),
-      ].sort((a: any, b: any) =>
-        a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-      );
+      ]);
     });
 
   beforeEach(async () => {
@@ -468,7 +467,7 @@ describe("reorderClip", () => {
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
       const video = yield* db.getVideoWithClipsById(videoId);
-      return [
+      return sortByOrder([
         ...video.clips.map((c: any) => ({
           type: "clip" as const,
           id: c.id,
@@ -479,9 +478,7 @@ describe("reorderClip", () => {
           id: s.id,
           order: s.order,
         })),
-      ].sort((a: any, b: any) =>
-        a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-      );
+      ]);
     });
 
   beforeEach(async () => {
@@ -589,7 +586,7 @@ describe("reorderClipSection", () => {
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
       const video = yield* db.getVideoWithClipsById(videoId);
-      return [
+      return sortByOrder([
         ...video.clips.map((c: any) => ({
           type: "clip" as const,
           id: c.id,
@@ -601,9 +598,7 @@ describe("reorderClipSection", () => {
           name: s.name,
           order: s.order,
         })),
-      ].sort((a: any, b: any) =>
-        a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-      );
+      ]);
     });
 
   beforeEach(async () => {
@@ -740,7 +735,7 @@ describe("createClipSectionAtPosition", () => {
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
       const video = yield* db.getVideoWithClipsById(videoId);
-      return [
+      return sortByOrder([
         ...video.clips.map((c: any) => ({
           type: "clip" as const,
           id: c.id,
@@ -752,9 +747,7 @@ describe("createClipSectionAtPosition", () => {
           name: s.name,
           order: s.order,
         })),
-      ].sort((a: any, b: any) =>
-        a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-      );
+      ]);
     });
 
   beforeEach(async () => {

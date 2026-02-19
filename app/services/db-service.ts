@@ -33,16 +33,7 @@ const makeDbCall = <T>(fn: () => Promise<T>) => {
   });
 };
 
-/**
- * Compare two order strings using ASCII/byte ordering.
- * This matches PostgreSQL's COLLATE "C" behavior.
- * IMPORTANT: localeCompare() uses locale-aware sorting which differs from COLLATE "C".
- * fractional-indexing library generates keys like "Zz" to sort before "a0",
- * which requires byte ordering (where 'Z' (90) < 'a' (97)).
- */
-const compareOrderStrings = (a: string, b: string): number => {
-  return a < b ? -1 : a > b ? 1 : 0;
-};
+import { compareOrderStrings } from "@/lib/sort-by-order";
 
 export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
   "DBFunctionsService",

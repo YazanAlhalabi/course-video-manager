@@ -1,3 +1,4 @@
+import { sortByOrder } from "@/lib/sort-by-order";
 import { runtimeLive } from "@/services/layer";
 import { acquireTextWritingContext } from "@/services/text-writing-agent";
 import {
@@ -31,9 +32,7 @@ const buildSuggestionTranscript = (
   truncateAfterClipId: string | null
 ): string => {
   // Sort clips by order
-  const sortedClips = [...clips].sort((a, b) =>
-    a.order < b.order ? -1 : a.order > b.order ? 1 : 0
-  );
+  const sortedClips = sortByOrder(clips);
 
   // Find truncation point if specified
   let clipsToInclude = sortedClips;

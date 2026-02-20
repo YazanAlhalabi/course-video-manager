@@ -684,9 +684,153 @@ describe("clipStateReducer", () => {
   });
 
   describe("Deleting clips", () => {
-    it(
-      "Should move the insertion point to the previous clip when a clip is deleted"
-    );
+    it("Should move the insertion point to the previous item when a clip section is deleted", () => {
+      const tester = new ReducerTester(
+        clipStateReducer,
+        createInitialState({
+          items: [
+            fromPartial({
+              type: "on-database",
+              frontendId: "fe-1" as FrontendId,
+              databaseId: "db-1" as DatabaseId,
+              scene: "Clip 1",
+              insertionOrder: null,
+            }),
+            fromPartial({
+              type: "clip-section-on-database",
+              frontendId: "fe-s1" as FrontendId,
+              databaseId: "db-s1" as DatabaseId,
+              name: "Section 1",
+              insertionOrder: null,
+            }),
+            fromPartial({
+              type: "on-database",
+              frontendId: "fe-2" as FrontendId,
+              databaseId: "db-2" as DatabaseId,
+              scene: "Clip 2",
+              insertionOrder: null,
+            }),
+          ],
+          insertionPoint: { type: "end" },
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "clips-deleted",
+          clipIds: ["fe-s1" as FrontendId],
+        })
+        .getState();
+
+      expect(state.items).toHaveLength(2);
+      expect(state.items).toMatchObject([
+        { scene: "Clip 1" },
+        { scene: "Clip 2" },
+      ]);
+
+      // Insertion point should move to after Clip 1 (the item before the deleted section)
+      expect(state.insertionPoint).toEqual({
+        type: "after-clip",
+        frontendClipId: "fe-1",
+      });
+    });
+
+    it("Should move the insertion point to end when deleting a clip section that is the first item", () => {
+      const tester = new ReducerTester(
+        clipStateReducer,
+        createInitialState({
+          items: [
+            fromPartial({
+              type: "clip-section-on-database",
+              frontendId: "fe-s1" as FrontendId,
+              databaseId: "db-s1" as DatabaseId,
+              name: "Section 1",
+              insertionOrder: null,
+            }),
+            fromPartial({
+              type: "on-database",
+              frontendId: "fe-1" as FrontendId,
+              databaseId: "db-1" as DatabaseId,
+              scene: "Clip 1",
+              insertionOrder: null,
+            }),
+          ],
+          insertionPoint: {
+            type: "after-clip",
+            frontendClipId: "fe-1" as FrontendId,
+          },
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "clips-deleted",
+          clipIds: ["fe-s1" as FrontendId],
+        })
+        .getState();
+
+      expect(state.items).toHaveLength(1);
+      expect(state.items).toMatchObject([{ scene: "Clip 1" }]);
+
+      // No item before the deleted section, so insertion point should be "end"
+      expect(state.insertionPoint).toEqual({
+        type: "end",
+      });
+    });
+
+    it("Should move the insertion point to the previous clip section when deleting a clip section after another section", () => {
+      const tester = new ReducerTester(
+        clipStateReducer,
+        createInitialState({
+          items: [
+            fromPartial({
+              type: "clip-section-on-database",
+              frontendId: "fe-s1" as FrontendId,
+              databaseId: "db-s1" as DatabaseId,
+              name: "Section 1",
+              insertionOrder: null,
+            }),
+            fromPartial({
+              type: "clip-section-on-database",
+              frontendId: "fe-s2" as FrontendId,
+              databaseId: "db-s2" as DatabaseId,
+              name: "Section 2",
+              insertionOrder: null,
+            }),
+            fromPartial({
+              type: "on-database",
+              frontendId: "fe-1" as FrontendId,
+              databaseId: "db-1" as DatabaseId,
+              scene: "Clip 1",
+              insertionOrder: null,
+            }),
+          ],
+          insertionPoint: {
+            type: "after-clip",
+            frontendClipId: "fe-1" as FrontendId,
+          },
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "clips-deleted",
+          clipIds: ["fe-s2" as FrontendId],
+        })
+        .getState();
+
+      expect(state.items).toHaveLength(2);
+      expect(state.items).toMatchObject([
+        { name: "Section 1" },
+        { scene: "Clip 1" },
+      ]);
+
+      // Should select the previous item (Section 1)
+      expect(state.insertionPoint).toEqual({
+        type: "after-clip-section",
+        frontendClipSectionId: "fe-s1",
+      });
+    });
   });
 
   describe("Deleting Latest Inserted Clip", () => {

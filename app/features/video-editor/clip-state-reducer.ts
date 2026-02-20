@@ -1202,6 +1202,51 @@ const archiveClips = (
     };
   }
 
+  // When a clip section is deleted and the insertion point was not on it,
+  // move the insertion point to the item before the deleted section
+  const firstDeletedClipSectionIndex = frontendIds
+    .map((id) => allItems.findIndex((item) => item.frontendId === id))
+    .find((idx) => {
+      const item = allItems[idx];
+      return (
+        item &&
+        (item.type === "clip-section-on-database" ||
+          item.type === "clip-section-optimistically-added")
+      );
+    });
+
+  if (firstDeletedClipSectionIndex !== undefined) {
+    const slicedItems = items.slice(0, firstDeletedClipSectionIndex);
+    const previousItem = slicedItems.findLast((c) => c !== undefined);
+
+    let newInsertionPoint: FrontendInsertionPoint;
+    if (previousItem) {
+      if (
+        previousItem.type === "on-database" ||
+        previousItem.type === "optimistically-added"
+      ) {
+        newInsertionPoint = {
+          type: "after-clip",
+          frontendClipId: previousItem.frontendId,
+        };
+      } else {
+        newInsertionPoint = {
+          type: "after-clip-section",
+          frontendClipSectionId: previousItem.frontendId,
+        };
+      }
+    } else {
+      newInsertionPoint = { type: "end" };
+    }
+
+    return {
+      items: items.filter((c) => c !== undefined),
+      insertionPoint: newInsertionPoint,
+      clipsToArchive,
+      clipSectionsToArchive,
+    };
+  }
+
   return {
     items: items.filter((c) => c !== undefined),
     insertionPoint: insertionPoint,

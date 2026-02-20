@@ -13,8 +13,12 @@ import { RecordingSignalIndicator } from "./timeline-indicators";
 import { TableOfContents } from "./table-of-contents";
 import { SuggestionsPanel } from "./suggestions-panel";
 import { ActionsDropdown } from "./actions-dropdown";
-import { isClipSection } from "../clip-utils";
 import { PreloadableClipManager } from "../preloadable-clip";
+import {
+  getLastTranscribedClipId as getLastTranscribedClipIdSelector,
+  getClipSections as getClipSectionsSelector,
+  getHasSections as getHasSectionsSelector,
+} from "../video-editor-selectors";
 import { AlertTriangleIcon, ChevronLeftIcon } from "lucide-react";
 import { Link, useFetcher } from "react-router";
 import { useContextSelector } from "use-context-selector";
@@ -59,9 +63,17 @@ export const VideoPlayerPanel = () => {
     VideoEditorContext,
     (ctx) => ctx.liveMediaStream
   );
-  const viewMode = useContextSelector(
+  const showVideoPlayer = useContextSelector(
     VideoEditorContext,
-    (ctx) => ctx.viewMode
+    (ctx) => ctx.showVideoPlayer
+  );
+  const showLiveStream = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.showLiveStream
+  );
+  const showLastFrame = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.showLastFrame
   );
   const obsConnectorState = useContextSelector(
     VideoEditorContext,
@@ -210,18 +222,13 @@ export const VideoPlayerPanel = () => {
     [setSuggestionState]
   );
 
-  // Get the last clip with text (transcription completed) for suggestions trigger
-  const lastTranscribedClipId = useMemo(() => {
-    const clipsWithText = clips.filter(
-      (clip) => clip.type === "on-database" && clip.text
-    );
-    return clipsWithText.length > 0
-      ? clipsWithText[clipsWithText.length - 1]!.frontendId
-      : null;
-  }, [clips]);
+  const lastTranscribedClipId = useMemo(
+    () => getLastTranscribedClipIdSelector(clips),
+    [clips]
+  );
 
-  const clipSections = items.filter(isClipSection);
-  const hasSections = clipSections.length > 0;
+  const clipSections = useMemo(() => getClipSectionsSelector(items), [items]);
+  const hasSections = getHasSectionsSelector(items);
 
   return (
     <>
@@ -257,8 +264,7 @@ export const VideoPlayerPanel = () => {
                     obsConnectorState.profile === "TikTok" &&
                     "w-92 aspect-[9/16]",
                   "hidden",
-                  (viewMode === "live-stream" || viewMode === "last-frame") &&
-                    "block"
+                  (showLiveStream || showLastFrame) && "block"
                 )}
               >
                 {obsConnectorState.type === "obs-recording" && (
@@ -275,7 +281,7 @@ export const VideoPlayerPanel = () => {
                   />
                 )}
                 {databaseClipToShowLastFrameOf &&
-                  viewMode === "last-frame" &&
+                  showLastFrame &&
                   // Only show overlay if scenes match, or if no scene is detected
                   (obsConnectorState.type !== "obs-recording" &&
                   obsConnectorState.type !== "obs-connected"
@@ -301,7 +307,7 @@ export const VideoPlayerPanel = () => {
             <div
               className={cn(
                 "w-full aspect-[16/9]",
-                viewMode !== "video-player" && "hidden"
+                !showVideoPlayer && "hidden"
               )}
             >
               <PreloadableClipManager

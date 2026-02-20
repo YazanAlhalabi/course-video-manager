@@ -1,5 +1,4 @@
-import { formatSecondsToTimeCode } from "@/services/utils";
-import type { ClipSectionNamingModal, ClipComputedProps } from "./types";
+import type { ClipSectionNamingModal } from "./types";
 import { ClipSectionNamingModal as ClipSectionNamingModalComponent } from "./components/clip-section-naming-modal";
 import { CreateVideoFromSelectionModal } from "./components/create-video-from-selection-modal";
 import { VideoPlayerPanel } from "./components/video-player-panel";
@@ -16,13 +15,12 @@ import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
 import { useEffectReducer } from "use-effect-reducer";
 import type {
   Clip,
-  ClipOnDatabase,
   EditorError,
   FrontendId,
   FrontendInsertionPoint,
   TimelineItem,
 } from "./clip-state-reducer";
-import { calculateTextSimilarity, isClip } from "./clip-utils";
+import { isClip } from "./clip-utils";
 import { type OBSConnectionOuterState } from "./obs-connector";
 import { type FrontendSpeechDetectorState } from "./use-speech-detector";
 import {
@@ -33,6 +31,19 @@ import {
   VideoEditorContext,
   type SuggestionState,
 } from "./video-editor-context";
+import {
+  getClipsToAggressivelyPreload,
+  getTotalDuration,
+  getShowVideoPlayer,
+  getShowLiveStream,
+  getShowLastFrame,
+  getDatabaseClipBeforeInsertionPoint,
+  getCurrentClip,
+  getAllClipsHaveSilenceDetected,
+  getAllClipsHaveText,
+  getClipComputedProps,
+  getAreAnyClipsDangerous,
+} from "./video-editor-selectors";
 
 const useVideoEditor = (props: {
   items: TimelineItem[];
@@ -169,19 +180,11 @@ export const VideoEditor = (props: {
     onCreateVideoFromSelection: props.onCreateVideoFromSelection,
   });
 
-  const currentClipIndex = clips.findIndex(
-    (clip) => clip.frontendId === state.currentClipId
-  );
-
-  const nextClip = clips[currentClipIndex + 1];
-
-  const selectedClipId = Array.from(state.selectedClipsSet)[0];
-
-  const clipsToAggressivelyPreload = [
+  const clipsToAggressivelyPreload = getClipsToAggressivelyPreload(
     state.currentClipId,
-    nextClip?.frontendId,
-    selectedClipId,
-  ].filter((id) => id !== undefined) as FrontendId[];
+    clips,
+    state.selectedClipsSet
+  );
 
   const currentClipId = state.currentClipId;
 
@@ -228,72 +231,29 @@ export const VideoEditor = (props: {
     youtubeChapters,
   } = useClipboardOperations(props.items);
 
-  const totalDuration = clips.reduce((acc, clip) => {
-    if (clip.type === "on-database") {
-      return acc + (clip.sourceEndTime - clip.sourceStartTime);
-    }
-    return acc;
-  }, 0);
+  const totalDuration = getTotalDuration(clips);
 
-  let viewMode: "video-player" | "live-stream" | "last-frame" = "video-player";
-
-  if (state.showLastFrameOfVideo) {
-    viewMode = "last-frame";
-  } else if (!props.liveMediaStream || state.runningState === "playing") {
-    viewMode = "video-player";
-  } else {
-    viewMode = "live-stream";
-  }
+  const showVideoPlayer = getShowVideoPlayer(state.runningState);
+  const showLiveStream = getShowLiveStream(
+    !!props.liveMediaStream,
+    state.runningState
+  );
+  const showLastFrame = getShowLastFrame(state.showLastFrameOfVideo);
 
   const databaseClipToShowLastFrameOf = getDatabaseClipBeforeInsertionPoint(
     clips,
     props.insertionPoint
   );
 
-  const currentClip = clips.find((clip) => clip.frontendId === currentClipId);
+  const currentClip = getCurrentClip(clips, currentClipId);
 
-  const allClipsHaveSilenceDetected = clips.every(
-    (clip) => clip.type === "on-database"
-  );
+  const allClipsHaveSilenceDetected = getAllClipsHaveSilenceDetected(clips);
 
-  const allClipsHaveText = clips.every(
-    (clip) => clip.type === "on-database" && clip.text
-  );
+  const allClipsHaveText = getAllClipsHaveText(clips);
 
-  // Create a map of clip frontendId -> computed properties (timecode, levenshtein)
-  const clipComputedProps = useMemo(() => {
-    let timecode = 0;
-    const map: ClipComputedProps = new Map();
+  const clipComputedProps = useMemo(() => getClipComputedProps(clips), [clips]);
 
-    clips.forEach((clip, index) => {
-      if (clip.type === "optimistically-added") {
-        map.set(clip.frontendId, { timecode: "", nextLevenshtein: 0 });
-        return;
-      }
-
-      const nextClip = clips[index + 1];
-
-      const nextLevenshtein =
-        nextClip?.type === "on-database" && nextClip?.text
-          ? calculateTextSimilarity(clip.text, nextClip.text)
-          : 0;
-
-      const timecodeString = formatSecondsToTimeCode(timecode);
-
-      const duration = clip.sourceEndTime - clip.sourceStartTime;
-      timecode += duration;
-
-      map.set(clip.frontendId, { timecode: timecodeString, nextLevenshtein });
-    });
-
-    return map;
-  }, [clips]);
-
-  const areAnyClipsDangerous = clips.some((clip) => {
-    if (clip.type !== "on-database") return false;
-    const props = clipComputedProps.get(clip.frontendId);
-    return props && props.nextLevenshtein > DANGEROUS_TEXT_SIMILARITY_THRESHOLD;
-  });
+  const areAnyClipsDangerous = getAreAnyClipsDangerous(clips);
 
   // Section modal management callbacks
   const onEditSection = useCallback(
@@ -376,7 +336,9 @@ export const VideoEditor = (props: {
       clips,
       currentClip,
       currentClipProfile: currentClip?.profile ?? undefined,
-      viewMode,
+      showVideoPlayer,
+      showLiveStream,
+      showLastFrame,
       clipComputedProps,
       totalDuration,
       clipsToAggressivelyPreload,
@@ -471,7 +433,9 @@ export const VideoEditor = (props: {
       dispatch,
       clips,
       currentClip,
-      viewMode,
+      showVideoPlayer,
+      showLiveStream,
+      showLastFrame,
       clipComputedProps,
       totalDuration,
       clipsToAggressivelyPreload,
@@ -584,27 +548,4 @@ export const VideoEditor = (props: {
       </VideoEditorContext.Provider>
     </div>
   );
-};
-
-const DANGEROUS_TEXT_SIMILARITY_THRESHOLD = 40;
-
-export const getDatabaseClipBeforeInsertionPoint = (
-  clips: Clip[],
-  insertionPoint: FrontendInsertionPoint
-): ClipOnDatabase | undefined => {
-  if (insertionPoint.type === "start") {
-    return undefined;
-  }
-
-  if (insertionPoint.type === "end") {
-    return clips.findLast((clip) => clip.type === "on-database");
-  }
-
-  if (insertionPoint.type === "after-clip") {
-    return clips.find(
-      (clip) =>
-        clip.frontendId === insertionPoint.frontendClipId &&
-        clip.type === "on-database"
-    ) as ClipOnDatabase | undefined;
-  }
 };

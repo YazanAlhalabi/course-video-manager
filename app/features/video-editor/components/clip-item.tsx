@@ -22,8 +22,11 @@ import {
 import type { Clip } from "../clip-state-reducer";
 import { VideoEditorContext } from "../video-editor-context";
 import { useContextSelector } from "use-context-selector";
-
-const DANGEROUS_TEXT_SIMILARITY_THRESHOLD = 40;
+import {
+  DANGEROUS_TEXT_SIMILARITY_THRESHOLD,
+  getClipPercentComplete,
+  getIsClipPortrait,
+} from "../video-editor-selectors";
 
 /**
  * Props for the ClipItem component
@@ -93,16 +96,9 @@ export const ClipItem = (props: ClipItemProps) => {
     (ctx) => ctx.setIsCreateVideoModalOpen
   );
 
-  const duration =
-    clip.type === "on-database"
-      ? clip.sourceEndTime - clip.sourceStartTime
-      : null;
+  const percentComplete = getClipPercentComplete(clip, currentTimeInClip);
 
-  const percentComplete = duration ? currentTimeInClip / duration : 0;
-
-  const isPortrait =
-    clip.type === "on-database" &&
-    (clip.profile === "TikTok" || clip.profile === "Portrait");
+  const isPortrait = getIsClipPortrait(clip);
 
   return (
     <ContextMenu>

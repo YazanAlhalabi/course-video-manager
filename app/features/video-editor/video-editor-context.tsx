@@ -41,7 +41,9 @@ export type VideoEditorContextType = {
   clips: Clip[];
   currentClip: Clip | undefined;
   currentClipProfile: string | undefined;
-  viewMode: "video-player" | "live-stream" | "last-frame";
+  showVideoPlayer: boolean;
+  showLiveStream: boolean;
+  showLastFrame: boolean;
   clipComputedProps: ClipComputedProps;
   totalDuration: number;
   clipsToAggressivelyPreload: FrontendId[];

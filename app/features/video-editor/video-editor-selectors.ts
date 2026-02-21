@@ -82,12 +82,14 @@ export const getShowLastFrame = (showLastFrameOfVideo: boolean): boolean => {
 };
 
 export const getDatabaseClipBeforeInsertionPoint = (
-  clips: Clip[],
+  items: TimelineItem[],
   insertionPoint: FrontendInsertionPoint
 ): ClipOnDatabase | undefined => {
   if (insertionPoint.type === "start") {
     return undefined;
   }
+
+  const clips = getClips(items);
 
   if (insertionPoint.type === "end") {
     return clips.findLast((clip) => clip.type === "on-database");
@@ -99,6 +101,21 @@ export const getDatabaseClipBeforeInsertionPoint = (
         clip.frontendId === insertionPoint.frontendClipId &&
         clip.type === "on-database"
     ) as ClipOnDatabase | undefined;
+  }
+
+  if (insertionPoint.type === "after-clip-section") {
+    const sectionIndex = items.findIndex(
+      (item) =>
+        item.frontendId === insertionPoint.frontendClipSectionId &&
+        isClipSection(item)
+    );
+    if (sectionIndex === -1) return undefined;
+
+    const itemsBefore = items.slice(0, sectionIndex);
+    return itemsBefore.findLast(
+      (item): item is ClipOnDatabase =>
+        isClip(item) && item.type === "on-database"
+    );
   }
 
   return undefined;

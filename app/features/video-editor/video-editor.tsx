@@ -241,7 +241,7 @@ export const VideoEditor = (props: {
   const showLastFrame = getShowLastFrame(state.showLastFrameOfVideo);
 
   const databaseClipToShowLastFrameOf = getDatabaseClipBeforeInsertionPoint(
-    clips,
+    props.items,
     props.insertionPoint
   );
 

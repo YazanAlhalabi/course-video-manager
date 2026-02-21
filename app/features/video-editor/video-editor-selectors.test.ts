@@ -268,7 +268,7 @@ describe("getShowLastFrame", () => {
 // ---------------------------------------------------------------------------
 
 describe("getDatabaseClipBeforeInsertionPoint", () => {
-  const clips: Clip[] = [
+  const items: TimelineItem[] = [
     makeClipOnDatabase({ frontendId: id("a") }),
     makeOptimisticClip({ frontendId: id("b") }),
     makeClipOnDatabase({ frontendId: id("c") }),
@@ -276,12 +276,12 @@ describe("getDatabaseClipBeforeInsertionPoint", () => {
 
   it("returns undefined for start insertion point", () => {
     expect(
-      getDatabaseClipBeforeInsertionPoint(clips, { type: "start" })
+      getDatabaseClipBeforeInsertionPoint(items, { type: "start" })
     ).toBeUndefined();
   });
 
   it("returns last database clip for end insertion point", () => {
-    const result = getDatabaseClipBeforeInsertionPoint(clips, { type: "end" });
+    const result = getDatabaseClipBeforeInsertionPoint(items, { type: "end" });
     expect(result?.frontendId).toBe(id("c"));
   });
 
@@ -290,7 +290,7 @@ describe("getDatabaseClipBeforeInsertionPoint", () => {
       type: "after-clip",
       frontendClipId: id("a"),
     };
-    const result = getDatabaseClipBeforeInsertionPoint(clips, insertionPoint);
+    const result = getDatabaseClipBeforeInsertionPoint(items, insertionPoint);
     expect(result?.frontendId).toBe(id("a"));
   });
 
@@ -300,8 +300,61 @@ describe("getDatabaseClipBeforeInsertionPoint", () => {
       frontendClipId: id("b"),
     };
     expect(
-      getDatabaseClipBeforeInsertionPoint(clips, insertionPoint)
+      getDatabaseClipBeforeInsertionPoint(items, insertionPoint)
     ).toBeUndefined();
+  });
+
+  it("returns the last database clip before a clip section", () => {
+    const itemsWithSection: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("a") }),
+      makeClipOnDatabase({ frontendId: id("b") }),
+      makeClipSection(id("s1"), "Intro"),
+      makeClipOnDatabase({ frontendId: id("c") }),
+    ];
+    const result = getDatabaseClipBeforeInsertionPoint(itemsWithSection, {
+      type: "after-clip-section",
+      frontendClipSectionId: id("s1"),
+    });
+    expect(result?.frontendId).toBe(id("b"));
+  });
+
+  it("returns undefined when clip section is at the start", () => {
+    const itemsWithSection: TimelineItem[] = [
+      makeClipSection(id("s1"), "Intro"),
+      makeClipOnDatabase({ frontendId: id("a") }),
+    ];
+    expect(
+      getDatabaseClipBeforeInsertionPoint(itemsWithSection, {
+        type: "after-clip-section",
+        frontendClipSectionId: id("s1"),
+      })
+    ).toBeUndefined();
+  });
+
+  it("returns the database clip when section follows it directly", () => {
+    const itemsWithSection: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("a") }),
+      makeClipSection(id("s1"), "Body"),
+    ];
+    const result = getDatabaseClipBeforeInsertionPoint(itemsWithSection, {
+      type: "after-clip-section",
+      frontendClipSectionId: id("s1"),
+    });
+    expect(result?.frontendId).toBe(id("a"));
+  });
+
+  it("skips optimistic clips when looking before a section", () => {
+    const itemsWithSection: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("a") }),
+      makeOptimisticClip({ frontendId: id("b") }),
+      makeClipSection(id("s1"), "Body"),
+      makeClipOnDatabase({ frontendId: id("c") }),
+    ];
+    const result = getDatabaseClipBeforeInsertionPoint(itemsWithSection, {
+      type: "after-clip-section",
+      frontendClipSectionId: id("s1"),
+    });
+    expect(result?.frontendId).toBe(id("a"));
   });
 });
 

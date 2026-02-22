@@ -1,11 +1,4 @@
 import { AddVideoModal } from "@/components/add-video-modal";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatSecondsToTimeCode } from "@/services/utils";
 import { LiveMediaStream } from "./live-media-stream";
@@ -21,11 +14,10 @@ import {
   getIsOBSActive as getIsOBSActiveSelector,
   getIsLiveStreamPortrait as getIsLiveStreamPortraitSelector,
   getShouldShowLastFrameOverlay as getShouldShowLastFrameOverlaySelector,
-  getBackButtonUrl as getBackButtonUrlSelector,
   getShowCenterLine as getShowCenterLineSelector,
 } from "../video-editor-selectors";
-import { AlertTriangleIcon, ChevronLeftIcon } from "lucide-react";
-import { Link, useFetcher } from "react-router";
+import { AlertTriangleIcon } from "lucide-react";
+import { useFetcher } from "react-router";
 import { useContextSelector } from "use-context-selector";
 import {
   VideoEditorContext,
@@ -51,15 +43,6 @@ export const VideoPlayerPanel = () => {
     VideoEditorContext,
     (ctx) => ctx.areAnyClipsDangerous
   );
-  const repoName = useContextSelector(
-    VideoEditorContext,
-    (ctx) => ctx.repoName
-  );
-  const lessonPath = useContextSelector(
-    VideoEditorContext,
-    (ctx) => ctx.lessonPath
-  );
-  const repoId = useContextSelector(VideoEditorContext, (ctx) => ctx.repoId);
   const lessonId = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.lessonId
@@ -243,7 +226,6 @@ export const VideoPlayerPanel = () => {
     showLastFrame,
     obsConnectorState
   );
-  const backButtonUrl = getBackButtonUrlSelector(repoId, lessonId);
   const showCenterLine = getShowCenterLineSelector(obsConnectorState);
 
   return (
@@ -262,13 +244,6 @@ export const VideoPlayerPanel = () => {
                   </span>
                 )}
               </h1>
-              {repoName && lessonPath && (
-                <h2 className="text-sm font-medium mb-1">
-                  {repoName}
-                  {" - "}
-                  {lessonPath}
-                </h2>
-              )}
             </div>
 
             {liveMediaStream && (
@@ -331,63 +306,33 @@ export const VideoPlayerPanel = () => {
             </div>
 
             <div className="flex gap-2 mt-4">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      asChild={allClipsHaveSilenceDetected}
-                      variant="secondary"
-                      aria-label="Go Back"
-                      disabled={!allClipsHaveSilenceDetected}
-                    >
-                      {allClipsHaveSilenceDetected ? (
-                        <Link to={backButtonUrl}>
-                          <ChevronLeftIcon className="w-4 h-4" />
-                        </Link>
-                      ) : (
-                        <span>
-                          <ChevronLeftIcon className="w-4 h-4" />
-                        </span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  {!allClipsHaveSilenceDetected && (
-                    <TooltipContent>
-                      <p>Waiting for silence detection to complete</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-
-                <ActionsDropdown
-                  allClipsHaveSilenceDetected={allClipsHaveSilenceDetected}
-                  allClipsHaveText={allClipsHaveText}
-                  exportVideoClipsFetcher={exportVideoClipsFetcher}
-                  exportToDavinciResolveFetcher={exportToDavinciResolveFetcher}
-                  videoId={videoId}
-                  lessonId={lessonId}
-                  isExportModalOpen={isExportModalOpen}
-                  setIsExportModalOpen={setIsExportModalOpen}
-                  isCopied={isCopied}
-                  copyTranscriptToClipboard={copyTranscriptToClipboard}
-                  youtubeChapters={youtubeChapters}
-                  isChaptersCopied={isChaptersCopied}
-                  copyYoutubeChaptersToClipboard={
-                    copyYoutubeChaptersToClipboard
-                  }
-                  onAddVideoClick={() => setIsAddVideoModalOpen(true)}
-                  onAddNoteFromClipboard={onAddNoteFromClipboard}
-                  onRenameVideoClick={() => setIsRenameVideoModalOpen(true)}
-                  onRevealInFileSystem={() => {
-                    revealVideoFetcher.submit(
-                      {},
-                      {
-                        method: "post",
-                        action: `/api/videos/${videoId}/reveal`,
-                      }
-                    );
-                  }}
-                />
-              </TooltipProvider>
+              <ActionsDropdown
+                allClipsHaveSilenceDetected={allClipsHaveSilenceDetected}
+                allClipsHaveText={allClipsHaveText}
+                exportVideoClipsFetcher={exportVideoClipsFetcher}
+                exportToDavinciResolveFetcher={exportToDavinciResolveFetcher}
+                videoId={videoId}
+                lessonId={lessonId}
+                isExportModalOpen={isExportModalOpen}
+                setIsExportModalOpen={setIsExportModalOpen}
+                isCopied={isCopied}
+                copyTranscriptToClipboard={copyTranscriptToClipboard}
+                youtubeChapters={youtubeChapters}
+                isChaptersCopied={isChaptersCopied}
+                copyYoutubeChaptersToClipboard={copyYoutubeChaptersToClipboard}
+                onAddVideoClick={() => setIsAddVideoModalOpen(true)}
+                onAddNoteFromClipboard={onAddNoteFromClipboard}
+                onRenameVideoClick={() => setIsRenameVideoModalOpen(true)}
+                onRevealInFileSystem={() => {
+                  revealVideoFetcher.submit(
+                    {},
+                    {
+                      method: "post",
+                      action: `/api/videos/${videoId}/reveal`,
+                    }
+                  );
+                }}
+              />
             </div>
 
             {/* Tabbed panel for Suggestions and Table of Contents */}

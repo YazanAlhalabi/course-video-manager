@@ -47,7 +47,7 @@ export function VideoModal({
             controls
             autoPlay
           >
-            <source src={`/videos/${videoId}`} type="video/mp4" />
+            <source src={`/api/videos/${videoId}/stream`} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>

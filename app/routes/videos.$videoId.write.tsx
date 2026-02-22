@@ -55,14 +55,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Array as EffectArray, Console, Effect } from "effect";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ChevronDown,
   CopyIcon,
   SaveIcon,
   CheckIcon,
   PlusIcon,
-  FilmIcon,
   FileTextIcon,
   ListChecksIcon,
   VideoIcon,
@@ -79,7 +76,7 @@ import {
 } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { data, Link, useFetcher, useRevalidator } from "react-router";
+import { data, useFetcher, useRevalidator } from "react-router";
 import type { Route } from "./+types/videos.$videoId.write";
 import path from "path";
 import { FileSystem } from "@effect/platform";
@@ -463,15 +460,9 @@ const saveMessagesToStorage = (
 export function InnerComponent(props: Route.ComponentProps) {
   const { videoId } = props.params;
   const {
-    videoPath,
-    lessonPath,
-    sectionPath,
-    repoId,
     lessonId,
     fullPath,
     files,
-    nextVideoId,
-    previousVideoId,
     isStandalone,
     transcriptWordCount,
     clipSections,
@@ -846,59 +837,12 @@ export function InnerComponent(props: Route.ComponentProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="flex items-center gap-2 p-4 border-b justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to={isStandalone ? "/" : `/?repoId=${repoId}#${lessonId}`}>
-              <ChevronLeftIcon className="size-6" />
-            </Link>
-          </Button>
-          <h1 className="text-lg">
-            {isStandalone
-              ? videoPath
-              : `${sectionPath}/${lessonPath}/${videoPath}`}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/videos/${videoId}/edit`}>
-              <FilmIcon className="size-4 mr-1" />
-              Edit Video
-            </Link>
-          </Button>
-          {previousVideoId ? (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to={`/videos/${previousVideoId}/write`}>
-                <ChevronLeftIcon className="size-4 mr-1" />
-                Previous
-              </Link>
-            </Button>
-          ) : null}
-          {nextVideoId ? (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to={`/videos/${nextVideoId}/write`}>
-                Next
-                <ChevronRightIcon className="size-4 ml-1" />
-              </Link>
-            </Button>
-          ) : nextLessonWithoutVideo ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAddVideoToNextLessonModalOpen(true)}
-            >
-              Next
-              <ChevronRightIcon className="size-4 ml-1" />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-      <div className="flex-1 flex overflow-hidden">
+    <>
+      <div className="flex-1 flex overflow-hidden h-full">
         {/* Left column: Video and Transcript/Files */}
         <div className="w-1/4 border-r flex flex-col overflow-hidden">
           <div className="p-4 pb-0">
-            <Video src={`/videos/${videoId}`} />
+            <Video src={`/api/videos/${videoId}/stream`} />
           </div>
           {/* Tab buttons */}
           <div className="flex gap-1 px-4 pt-2 pb-4">
@@ -1824,7 +1768,7 @@ export function InnerComponent(props: Route.ComponentProps) {
           onOpenChange={setIsAddVideoToNextLessonModalOpen}
         />
       )}
-    </div>
+    </>
   );
 }
 

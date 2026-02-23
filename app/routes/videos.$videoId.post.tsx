@@ -23,7 +23,13 @@ import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -377,7 +383,9 @@ export default function PostPage(props: Route.ComponentProps) {
   const [pendingGeneratedText, setPendingGeneratedText] = useState<string>("");
 
   // Visibility state
-  const [isPublic, setIsPublic] = useState(false);
+  const [privacyStatus, setPrivacyStatus] = useState<"public" | "unlisted">(
+    "unlisted"
+  );
 
   // Upload state
   const hasStoredYoutubeVideoId =
@@ -500,7 +508,7 @@ export default function PostPage(props: Route.ComponentProps) {
         body: JSON.stringify({
           title,
           description,
-          privacyStatus: isPublic ? "public" : "unlisted",
+          privacyStatus,
         }),
       });
 
@@ -717,14 +725,21 @@ export default function PostPage(props: Route.ComponentProps) {
 
               {/* Visibility */}
               <div className="flex items-center gap-2">
-                <Checkbox
-                  id="public"
-                  checked={isPublic}
-                  onCheckedChange={(checked) => setIsPublic(checked === true)}
-                />
-                <Label htmlFor="public" className="cursor-pointer">
-                  Make video public
-                </Label>
+                <Label htmlFor="visibility">Visibility</Label>
+                <Select
+                  value={privacyStatus}
+                  onValueChange={(value: "public" | "unlisted") =>
+                    setPrivacyStatus(value)
+                  }
+                >
+                  <SelectTrigger id="visibility">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Upload section */}
@@ -773,8 +788,7 @@ export default function PostPage(props: Route.ComponentProps) {
                     <div className="flex items-center gap-2">
                       <CheckCircle2Icon className="h-4 w-4" />
                       <span className="text-sm">
-                        Video uploaded successfully as{" "}
-                        {isPublic ? "public" : "unlisted"}
+                        Video uploaded successfully as {privacyStatus}
                       </span>
                     </div>
                     {youtubeVideoId && (

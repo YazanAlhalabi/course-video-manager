@@ -10,7 +10,6 @@ import {
   ClipboardIcon,
   XIcon,
   Trash2Icon,
-  PencilIcon,
   PlusIcon,
   ScissorsIcon,
   AlertCircleIcon,
@@ -193,290 +192,291 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            to={`/videos/${videoId}/post`}
-            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            <ArrowLeftIcon className="size-4" />
-            Post
-          </Link>
-          <h2 className="text-xl font-semibold">
-            Thumbnails {thumbnails.length > 0 && `(${thumbnails.length})`}
-          </h2>
-        </div>
-        <Button onClick={() => dispatch({ type: "open-camera" })}>
-          <CameraIcon />
-          Capture Face
-        </Button>
-      </div>
-
-      {(state.capturedPhoto || state.diagramImage) && (
-        <div className="mb-6">
-          <h3 className="mb-2 text-sm font-medium text-gray-400">
-            {state.editingThumbnailId ? "Editing Thumbnail" : "Canvas Preview"}
+    <div className="flex h-full">
+      {/* Left sidebar: saved thumbnails */}
+      {thumbnails.length > 0 && (
+        <div className="w-48 shrink-0 border-r overflow-y-auto p-3">
+          <h3 className="mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Saved ({thumbnails.length})
           </h3>
-          <div className="inline-block overflow-hidden rounded-lg border">
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              className="h-auto max-w-2xl w-full"
-            />
-          </div>
-          {/* Layer controls */}
-          <div className="mt-4 space-y-3">
-            <h3 className="text-sm font-medium text-gray-400">Layers</h3>
-
-            {/* Background layer */}
-            {state.capturedPhoto ? (
-              <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
-                <ImageIcon className="size-4 text-gray-400" />
-                <span>Background Photo</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => dispatch({ type: "open-camera" })}
-                className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-400"
+          <div className="space-y-2">
+            {thumbnails.map((thumbnail) => (
+              <div
+                key={thumbnail.id}
+                className={`group relative rounded-lg overflow-hidden cursor-pointer transition-all ${
+                  state.editingThumbnailId === thumbnail.id
+                    ? "ring-2 ring-blue-500 border border-blue-500"
+                    : "border hover:border-gray-400"
+                }`}
+                onClick={() =>
+                  dispatch({
+                    type: "edit-requested",
+                    thumbnailId: thumbnail.id,
+                  })
+                }
               >
-                <CameraIcon className="size-4" />
-                <span>Capture a face photo</span>
-              </button>
-            )}
-
-            {/* Diagram layer */}
-            {state.diagramImage ? (
-              <div className="rounded border px-3 py-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <ClipboardIcon className="size-4 text-gray-400" />
-                    <span>Diagram</span>
-                  </div>
-                  <button
-                    onClick={() => dispatch({ type: "diagram-removed" })}
-                    className="text-gray-400 hover:text-gray-200"
-                  >
-                    <XIcon className="size-4" />
-                  </button>
-                </div>
-                <div className="mt-2">
-                  <Label className="text-xs text-gray-400">
-                    Horizontal Position
-                  </Label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={state.diagramPosition}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "diagram-position-changed",
-                        value: Number(e.target.value),
-                      })
-                    }
-                    className="mt-1 w-full"
+                {thumbnail.filePath ? (
+                  <img
+                    src={`/api/thumbnails/${thumbnail.id}/image`}
+                    alt="Thumbnail"
+                    className="w-full aspect-video object-cover"
                   />
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
-                <ClipboardIcon className="size-4" />
-                <span>Paste a diagram from clipboard (Ctrl+V)</span>
-              </div>
-            )}
-
-            {/* Cutout layer */}
-            {state.removingBackground ? (
-              <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm text-gray-400">
-                <Loader2Icon className="size-4 animate-spin" />
-                <span>Removing background...</span>
-              </div>
-            ) : state.backgroundRemovalError ? (
-              <div className="rounded border border-red-800 px-3 py-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-red-400">
-                    <AlertCircleIcon className="size-4" />
-                    <span>Cutout</span>
+                ) : (
+                  <div className="w-full aspect-video bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
+                    Not rendered
                   </div>
-                  <button
-                    onClick={() =>
-                      dispatch({ type: "retry-background-removal" })
-                    }
-                    className="text-xs text-red-400 hover:text-red-300 underline"
-                  >
-                    Retry
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-red-400/70">
-                  {state.backgroundRemovalError}
-                </p>
-              </div>
-            ) : state.cutoutImage ? (
-              <div className="rounded border px-3 py-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <ScissorsIcon className="size-4 text-gray-400" />
-                    <span>Cutout</span>
+                )}
+                {state.loadingEdit === thumbnail.id && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Loader2Icon className="size-4 animate-spin text-white" />
                   </div>
-                  <button
-                    onClick={() => dispatch({ type: "cutout-removed" })}
-                    className="text-gray-400 hover:text-gray-200"
-                  >
-                    <XIcon className="size-4" />
-                  </button>
-                </div>
-                <div className="mt-2">
-                  <Label className="text-xs text-gray-400">
-                    Horizontal Position
-                  </Label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={state.cutoutPosition}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "cutout-position-changed",
-                        value: Number(e.target.value),
-                      })
-                    }
-                    className="mt-1 w-full"
-                  />
-                </div>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(thumbnail.id);
+                  }}
+                  disabled={state.deleting === thumbnail.id}
+                  className="absolute top-1 right-1 rounded bg-black/60 p-1 text-gray-300 opacity-0 transition-opacity hover:bg-red-600 hover:text-white group-hover:opacity-100 disabled:opacity-50"
+                >
+                  {state.deleting === thumbnail.id ? (
+                    <Loader2Icon className="size-3 animate-spin" />
+                  ) : (
+                    <Trash2Icon className="size-3" />
+                  )}
+                </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
-                <ScissorsIcon className="size-4" />
-                <span>No cutout layer</span>
-              </div>
-            )}
+            ))}
           </div>
+        </div>
+      )}
 
-          {/* YouTube size previews */}
-          {state.previewDataUrl && (
-            <div className="mt-4">
-              <h3 className="mb-2 text-sm font-medium text-gray-400">
-                YouTube Previews
-              </h3>
-              <div className="flex items-end gap-4">
-                <YouTubePreview
-                  src={state.previewDataUrl}
-                  width={360}
-                  height={202}
-                  label="Home Feed"
-                />
-                <YouTubePreview
-                  src={state.previewDataUrl}
-                  width={246}
-                  height={138}
-                  label="Search Results"
-                />
-                <YouTubePreview
-                  src={state.previewDataUrl}
-                  width={168}
-                  height={94}
-                  label="Sidebar"
-                />
+      {/* Main content area */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/videos/${videoId}/post`}
+              className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              <ArrowLeftIcon className="size-4" />
+              Post
+            </Link>
+            <h2 className="text-xl font-semibold">Thumbnails</h2>
+          </div>
+          <Button onClick={() => dispatch({ type: "open-camera" })}>
+            <CameraIcon />
+            Capture Face
+          </Button>
+        </div>
+
+        {(state.capturedPhoto || state.diagramImage) && (
+          <div className="mb-6">
+            <h3 className="mb-2 text-sm font-medium text-gray-400">
+              {state.editingThumbnailId
+                ? "Editing Thumbnail"
+                : "Canvas Preview"}
+            </h3>
+            <div className="inline-block overflow-hidden rounded-lg border">
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                className="h-auto max-w-2xl w-full"
+              />
+            </div>
+            {/* Layer controls */}
+            <div className="mt-4 space-y-3">
+              <h3 className="text-sm font-medium text-gray-400">Layers</h3>
+
+              {/* Background layer */}
+              {state.capturedPhoto ? (
+                <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
+                  <ImageIcon className="size-4 text-gray-400" />
+                  <span>Background Photo</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => dispatch({ type: "open-camera" })}
+                  className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-400"
+                >
+                  <CameraIcon className="size-4" />
+                  <span>Capture a face photo</span>
+                </button>
+              )}
+
+              {/* Diagram layer */}
+              {state.diagramImage ? (
+                <div className="rounded border px-3 py-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <ClipboardIcon className="size-4 text-gray-400" />
+                      <span>Diagram</span>
+                    </div>
+                    <button
+                      onClick={() => dispatch({ type: "diagram-removed" })}
+                      className="text-gray-400 hover:text-gray-200"
+                    >
+                      <XIcon className="size-4" />
+                    </button>
+                  </div>
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-400">
+                      Horizontal Position
+                    </Label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={state.diagramPosition}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "diagram-position-changed",
+                          value: Number(e.target.value),
+                        })
+                      }
+                      className="mt-1 w-full"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
+                  <ClipboardIcon className="size-4" />
+                  <span>Paste a diagram from clipboard (Ctrl+V)</span>
+                </div>
+              )}
+
+              {/* Cutout layer */}
+              {state.removingBackground ? (
+                <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm text-gray-400">
+                  <Loader2Icon className="size-4 animate-spin" />
+                  <span>Removing background...</span>
+                </div>
+              ) : state.backgroundRemovalError ? (
+                <div className="rounded border border-red-800 px-3 py-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-red-400">
+                      <AlertCircleIcon className="size-4" />
+                      <span>Cutout</span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        dispatch({ type: "retry-background-removal" })
+                      }
+                      className="text-xs text-red-400 hover:text-red-300 underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-red-400/70">
+                    {state.backgroundRemovalError}
+                  </p>
+                </div>
+              ) : state.cutoutImage ? (
+                <div className="rounded border px-3 py-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <ScissorsIcon className="size-4 text-gray-400" />
+                      <span>Cutout</span>
+                    </div>
+                    <button
+                      onClick={() => dispatch({ type: "cutout-removed" })}
+                      className="text-gray-400 hover:text-gray-200"
+                    >
+                      <XIcon className="size-4" />
+                    </button>
+                  </div>
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-400">
+                      Horizontal Position
+                    </Label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={state.cutoutPosition}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "cutout-position-changed",
+                          value: Number(e.target.value),
+                        })
+                      }
+                      className="mt-1 w-full"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
+                  <ScissorsIcon className="size-4" />
+                  <span>No cutout layer</span>
+                </div>
+              )}
+            </div>
+
+            {/* YouTube size previews */}
+            {state.previewDataUrl && (
+              <div className="mt-4">
+                <h3 className="mb-2 text-sm font-medium text-gray-400">
+                  YouTube Previews
+                </h3>
+                <div className="flex items-end gap-4">
+                  <YouTubePreview
+                    src={state.previewDataUrl}
+                    width={360}
+                    height={202}
+                    label="Home Feed"
+                  />
+                  <YouTubePreview
+                    src={state.previewDataUrl}
+                    width={246}
+                    height={138}
+                    label="Search Results"
+                  />
+                  <YouTubePreview
+                    src={state.previewDataUrl}
+                    width={168}
+                    height={94}
+                    label="Sidebar"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 flex items-center gap-2">
+              {state.saving && (
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <Loader2Icon className="size-4 animate-spin" />
+                  <span>Saving...</span>
+                </div>
+              )}
+              {state.editingThumbnailId && (
+                <Button
+                  variant="outline"
+                  onClick={() => dispatch({ type: "new-thumbnail-clicked" })}
+                >
+                  <PlusIcon />
+                  New Thumbnail
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {thumbnails.length === 0 &&
+          !state.capturedPhoto &&
+          !state.diagramImage && (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
+              <ImageIcon className="size-16 opacity-50" />
+              <div className="text-center">
+                <p className="text-lg font-medium">No thumbnails yet</p>
+                <p className="text-sm mt-1">
+                  Capture a face photo or paste a diagram to start creating
+                  thumbnails.
+                </p>
               </div>
             </div>
           )}
-
-          <div className="mt-3 flex items-center gap-2">
-            {state.saving && (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <Loader2Icon className="size-4 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
-            {state.editingThumbnailId && (
-              <Button
-                variant="outline"
-                onClick={() => dispatch({ type: "new-thumbnail-clicked" })}
-              >
-                <PlusIcon />
-                New Thumbnail
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {thumbnails.length === 0 &&
-      !state.capturedPhoto &&
-      !state.diagramImage ? (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
-          <ImageIcon className="size-16 opacity-50" />
-          <div className="text-center">
-            <p className="text-lg font-medium">No thumbnails yet</p>
-            <p className="text-sm mt-1">
-              Capture a face photo or paste a diagram to start creating
-              thumbnails.
-            </p>
-          </div>
-        </div>
-      ) : (
-        thumbnails.length > 0 && (
-          <div>
-            <h3 className="mb-3 text-sm font-medium text-gray-400">
-              Saved Thumbnails
-            </h3>
-            <div className="grid grid-cols-3 gap-4">
-              {thumbnails.map((thumbnail) => (
-                <div
-                  key={thumbnail.id}
-                  className={`group relative rounded-lg overflow-hidden cursor-pointer transition-all ${
-                    state.editingThumbnailId === thumbnail.id
-                      ? "ring-2 ring-blue-500 border border-blue-500"
-                      : "border hover:border-gray-400"
-                  }`}
-                  onClick={() =>
-                    dispatch({
-                      type: "edit-requested",
-                      thumbnailId: thumbnail.id,
-                    })
-                  }
-                >
-                  {thumbnail.filePath ? (
-                    <img
-                      src={`/api/thumbnails/${thumbnail.id}/image`}
-                      alt="Thumbnail"
-                      className="w-full aspect-video object-cover"
-                    />
-                  ) : (
-                    <div className="w-full aspect-video bg-gray-800 flex items-center justify-center text-gray-500">
-                      Not rendered
-                    </div>
-                  )}
-                  {state.loadingEdit === thumbnail.id && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <Loader2Icon className="size-6 animate-spin text-white" />
-                    </div>
-                  )}
-                  <div className="absolute top-2 left-2 rounded-md bg-black/60 p-1.5 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100">
-                    <PencilIcon className="size-4" />
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(thumbnail.id);
-                    }}
-                    disabled={state.deleting === thumbnail.id}
-                    className="absolute top-2 right-2 rounded-md bg-black/60 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-red-600 hover:text-white group-hover:opacity-100 disabled:opacity-50"
-                  >
-                    {state.deleting === thumbnail.id ? (
-                      <Loader2Icon className="size-4 animate-spin" />
-                    ) : (
-                      <Trash2Icon className="size-4" />
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      )}
+      </div>
 
       <CaptureCameraModal
         open={state.cameraOpen}

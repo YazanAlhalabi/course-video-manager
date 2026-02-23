@@ -1,48 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { makeVideoEditorReducer } from "./video-state-reducer";
 import type { videoStateReducer } from "./video-state-reducer";
 import type { FrontendId } from "./clip-state-reducer";
-import type {
-  EffectObject,
-  EffectReducer,
-  EffectReducerExec,
-  EventObject,
-} from "use-effect-reducer";
-
-const createMockExec = () => {
-  const fn = vi.fn() as any;
-  fn.stop = vi.fn();
-  fn.replace = vi.fn();
-  return fn;
-};
-
-class ReducerTester<
-  TState,
-  TAction extends EventObject,
-  TEffect extends EffectObject<TState, TAction>,
-> {
-  private reducer: EffectReducer<TState, TAction, TEffect>;
-  private state: TState;
-  public exec: EffectReducerExec<TState, TAction, TEffect>;
-
-  constructor(
-    reducer: EffectReducer<TState, TAction, TEffect>,
-    initialState: TState
-  ) {
-    this.reducer = reducer;
-    this.state = initialState;
-    this.exec = createMockExec();
-  }
-
-  public send(action: TAction) {
-    this.state = this.reducer(this.state, action, this.exec);
-    return this;
-  }
-
-  public getState() {
-    return this.state;
-  }
-}
+import { ReducerTester } from "@/test-utils/reducer-tester";
 
 const createInitialState = (
   overrides: Partial<videoStateReducer.State> = {}
@@ -186,7 +146,7 @@ describe("videoStateReducer", () => {
         mode: "copy",
       });
 
-      expect(tester.exec).toHaveBeenCalledWith({
+      expect(tester.getExec()).toHaveBeenCalledWith({
         type: "create-video-from-selection",
         clipIds: [clip1, clip2],
         clipSectionIds: [],
@@ -219,7 +179,7 @@ describe("videoStateReducer", () => {
         mode: "copy",
       });
 
-      expect(tester.exec).toHaveBeenCalledWith({
+      expect(tester.getExec()).toHaveBeenCalledWith({
         type: "create-video-from-selection",
         clipIds: [clip1, clip2],
         clipSectionIds: [section1],
@@ -310,7 +270,7 @@ describe("videoStateReducer", () => {
         mode: "move",
       });
 
-      expect(tester.exec).toHaveBeenCalledWith({
+      expect(tester.getExec()).toHaveBeenCalledWith({
         type: "create-video-from-selection",
         clipIds: [clip1],
         clipSectionIds: [],

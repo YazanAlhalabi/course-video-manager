@@ -1,23 +1,11 @@
 import { fromPartial } from "@total-typescript/shoehorn";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   clipStateReducer,
   type DatabaseId,
   type FrontendId,
 } from "./clip-state-reducer";
-import type {
-  EffectObject,
-  EffectReducer,
-  EffectReducerExec,
-  EventObject,
-} from "use-effect-reducer";
-
-const createMockExec = () => {
-  const fn = vi.fn() as any;
-  fn.stop = vi.fn();
-  fn.replace = vi.fn();
-  return fn;
-};
+import { createMockExec, ReducerTester } from "@/test-utils/reducer-tester";
 
 const createInitialState = (
   overrides: Partial<clipStateReducer.State> = {}
@@ -29,38 +17,6 @@ const createInitialState = (
   error: null,
   ...overrides,
 });
-
-class ReducerTester<
-  TState,
-  TAction extends EventObject,
-  TEffect extends EffectObject<TState, TAction>,
-> {
-  private reducer: EffectReducer<TState, TAction, TEffect>;
-  private state: TState;
-  private exec: EffectReducerExec<TState, TAction, TEffect>;
-
-  constructor(
-    reducer: EffectReducer<TState, TAction, TEffect>,
-    initialState: TState
-  ) {
-    this.reducer = reducer;
-    this.state = initialState;
-    this.exec = createMockExec();
-  }
-
-  public send(action: TAction) {
-    this.state = this.reducer(this.state, action, this.exec);
-    return this;
-  }
-
-  public getState() {
-    return this.state;
-  }
-
-  public getExec() {
-    return this.exec;
-  }
-}
 
 describe("clipStateReducer", () => {
   describe("Transcribing", () => {

@@ -39,6 +39,7 @@ const initiateResumableUpload = (opts: {
             },
             status: {
               privacyStatus: "unlisted",
+              selfDeclaredMadeForKids: false,
             },
           }),
         }

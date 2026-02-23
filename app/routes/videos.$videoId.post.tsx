@@ -58,6 +58,8 @@ import {
 const POST_TITLE_STORAGE_KEY = (videoId: string) => `post-title-${videoId}`;
 const POST_DESCRIPTION_STORAGE_KEY = (videoId: string) =>
   `post-description-${videoId}`;
+const YOUTUBE_VIDEO_ID_STORAGE_KEY = (videoId: string) =>
+  `youtube-video-id-${videoId}`;
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
@@ -374,11 +376,29 @@ export default function PostPage(props: Route.ComponentProps) {
   const [pendingGeneratedText, setPendingGeneratedText] = useState<string>("");
 
   // Upload state
+  const hasStoredYoutubeVideoId =
+    typeof localStorage !== "undefined" &&
+    !!localStorage.getItem(YOUTUBE_VIDEO_ID_STORAGE_KEY(videoId));
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "success" | "error"
-  >("idle");
+  >(hasStoredYoutubeVideoId ? "success" : "idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string>("");
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string>(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(YOUTUBE_VIDEO_ID_STORAGE_KEY(videoId)) ?? "";
+    }
+    return "";
+  });
+
+  useEffect(() => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(
+        YOUTUBE_VIDEO_ID_STORAGE_KEY(videoId),
+        youtubeVideoId
+      );
+    }
+  }, [youtubeVideoId, videoId]);
 
   const generateContent = async (
     mode: "youtube-title" | "youtube-description"
@@ -503,6 +523,7 @@ export default function PostPage(props: Route.ComponentProps) {
             if (eventType === "progress") {
               setUploadProgress(eventData.percentage);
             } else if (eventType === "complete") {
+              setYoutubeVideoId(eventData.videoId);
               setUploadStatus("success");
               finalStatus = "success";
             } else if (eventType === "error") {
@@ -728,11 +749,23 @@ export default function PostPage(props: Route.ComponentProps) {
 
                 {/* Success state */}
                 {uploadStatus === "success" && (
-                  <div className="flex items-center gap-2 text-green-500 justify-center">
-                    <CheckCircle2Icon className="h-4 w-4" />
-                    <span className="text-sm">
-                      Video uploaded successfully as unlisted
-                    </span>
+                  <div className="flex flex-col items-center gap-2 text-green-500">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2Icon className="h-4 w-4" />
+                      <span className="text-sm">
+                        Video uploaded successfully as unlisted
+                      </span>
+                    </div>
+                    {youtubeVideoId && (
+                      <a
+                        href={`https://studio.youtube.com/video/${youtubeVideoId}/edit`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-500 hover:underline"
+                      >
+                        Open in YouTube Studio
+                      </a>
+                    )}
                   </div>
                 )}
 

@@ -18,6 +18,7 @@ const initiateResumableUpload = (opts: {
   accessToken: string;
   title: string;
   description: string;
+  privacyStatus: "public" | "unlisted";
   fileSize: number;
 }) =>
   Effect.tryPromise({
@@ -38,7 +39,7 @@ const initiateResumableUpload = (opts: {
               description: opts.description,
             },
             status: {
-              privacyStatus: "unlisted",
+              privacyStatus: opts.privacyStatus,
               selfDeclaredMadeForKids: false,
             },
           }),
@@ -76,6 +77,7 @@ export const uploadVideoToYouTube = (opts: {
   filePath: string;
   title: string;
   description: string;
+  privacyStatus: "public" | "unlisted";
   onProgress: (percentage: number) => void;
 }) =>
   Effect.gen(function* () {
@@ -94,6 +96,7 @@ export const uploadVideoToYouTube = (opts: {
       accessToken: opts.accessToken,
       title: opts.title,
       description: opts.description,
+      privacyStatus: opts.privacyStatus,
       fileSize,
     });
 

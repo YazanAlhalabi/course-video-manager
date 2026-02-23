@@ -23,6 +23,7 @@ import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -375,6 +376,9 @@ export default function PostPage(props: Route.ComponentProps) {
   >(null);
   const [pendingGeneratedText, setPendingGeneratedText] = useState<string>("");
 
+  // Visibility state
+  const [isPublic, setIsPublic] = useState(false);
+
   // Upload state
   const hasStoredYoutubeVideoId =
     typeof localStorage !== "undefined" &&
@@ -493,7 +497,11 @@ export default function PostPage(props: Route.ComponentProps) {
       const response = await fetch(`/api/videos/${videoId}/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify({
+          title,
+          description,
+          privacyStatus: isPublic ? "public" : "unlisted",
+        }),
       });
 
       if (!response.ok || !response.body) {
@@ -707,6 +715,18 @@ export default function PostPage(props: Route.ComponentProps) {
                 />
               </div>
 
+              {/* Visibility */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="public"
+                  checked={isPublic}
+                  onCheckedChange={(checked) => setIsPublic(checked === true)}
+                />
+                <Label htmlFor="public" className="cursor-pointer">
+                  Make video public
+                </Label>
+              </div>
+
               {/* Upload section */}
               <div className="space-y-3">
                 <Button
@@ -753,7 +773,8 @@ export default function PostPage(props: Route.ComponentProps) {
                     <div className="flex items-center gap-2">
                       <CheckCircle2Icon className="h-4 w-4" />
                       <span className="text-sm">
-                        Video uploaded successfully as unlisted
+                        Video uploaded successfully as{" "}
+                        {isPublic ? "public" : "unlisted"}
                       </span>
                     </div>
                     {youtubeVideoId && (

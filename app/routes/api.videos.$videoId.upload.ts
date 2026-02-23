@@ -10,6 +10,8 @@ export const action = async (args: Route.ActionArgs) => {
   const body = await args.request.json();
   const title: string = body.title;
   const description: string = body.description;
+  const privacyStatus: "public" | "unlisted" =
+    body.privacyStatus === "public" ? "public" : "unlisted";
 
   if (!title || !description) {
     return Response.json(
@@ -38,6 +40,7 @@ export const action = async (args: Route.ActionArgs) => {
           filePath,
           title,
           description,
+          privacyStatus,
           onProgress: (percentage) => {
             sendEvent("progress", { percentage });
           },

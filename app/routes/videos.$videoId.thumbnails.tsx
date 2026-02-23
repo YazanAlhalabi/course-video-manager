@@ -1,7 +1,7 @@
 import { DBFunctionsService } from "@/services/db-service";
 import { runtimeLive } from "@/services/layer";
 import { Console, Effect } from "effect";
-import { data } from "react-router";
+import { data, Link } from "react-router";
 import type { Route } from "./+types/videos.$videoId.thumbnails";
 import {
   CameraIcon,
@@ -14,6 +14,7 @@ import {
   PlusIcon,
   ScissorsIcon,
   AlertCircleIcon,
+  ArrowLeftIcon,
 } from "lucide-react";
 import { useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -194,9 +195,18 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   return (
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
-          Thumbnails {thumbnails.length > 0 && `(${thumbnails.length})`}
-        </h2>
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/videos/${videoId}/post`}
+            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            <ArrowLeftIcon className="size-4" />
+            Post
+          </Link>
+          <h2 className="text-xl font-semibold">
+            Thumbnails {thumbnails.length > 0 && `(${thumbnails.length})`}
+          </h2>
+        </div>
         <Button onClick={() => dispatch({ type: "open-camera" })}>
           <CameraIcon />
           Capture Face

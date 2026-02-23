@@ -6,6 +6,9 @@ import {
   Upload,
   X,
   ExternalLink,
+  Cloud,
+  Send,
+  Copy,
 } from "lucide-react";
 import { Link } from "react-router";
 import { UploadContext } from "./upload-context";
@@ -122,7 +125,11 @@ function UploadRow({
 }) {
   return (
     <div className="px-3 py-2 flex items-center gap-3 border-b last:border-b-0 hover:bg-accent/50">
-      <StatusIcon status={upload.status} />
+      <StatusIcon
+        status={upload.status}
+        uploadType={upload.uploadType}
+        bufferStage={upload.bufferStage}
+      />
       <div className="flex-1 min-w-0">
         <p className="text-sm truncate">{upload.title}</p>
         <UploadStatusDetail upload={upload} />
@@ -139,9 +146,27 @@ function UploadRow({
   );
 }
 
-function StatusIcon({ status }: { status: uploadReducer.UploadStatus }) {
+function StatusIcon({
+  status,
+  uploadType,
+  bufferStage,
+}: {
+  status: uploadReducer.UploadStatus;
+  uploadType: uploadReducer.UploadType;
+  bufferStage: uploadReducer.BufferStage | null;
+}) {
   switch (status) {
     case "uploading":
+      if (uploadType === "buffer") {
+        switch (bufferStage) {
+          case "syncing":
+            return <Cloud className="size-4 text-blue-500 shrink-0" />;
+          case "sending-webhook":
+            return <Send className="size-4 text-blue-500 shrink-0" />;
+          default:
+            return <Copy className="size-4 text-blue-500 shrink-0" />;
+        }
+      }
       return <Upload className="size-4 text-blue-500 shrink-0" />;
     case "retrying":
       return (
@@ -154,9 +179,38 @@ function StatusIcon({ status }: { status: uploadReducer.UploadStatus }) {
   }
 }
 
+const BUFFER_STAGE_LABELS: Record<uploadReducer.BufferStage, string> = {
+  copying: "Copying to Dropbox",
+  syncing: "Syncing to Dropbox",
+  "sending-webhook": "Sending to Zapier",
+};
+
 function UploadStatusDetail({ upload }: { upload: uploadReducer.UploadEntry }) {
   switch (upload.status) {
     case "uploading":
+      if (upload.uploadType === "buffer" && upload.bufferStage) {
+        const stageLabel = BUFFER_STAGE_LABELS[upload.bufferStage];
+        if (upload.bufferStage === "copying") {
+          return (
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex-1 bg-secondary rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-blue-500 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${upload.progress}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground w-8 text-right">
+                {upload.progress}%
+              </span>
+            </div>
+          );
+        }
+        return (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {stageLabel}...
+          </p>
+        );
+      }
       return (
         <div className="flex items-center gap-2 mt-0.5">
           <div className="flex-1 bg-secondary rounded-full h-1.5 overflow-hidden">
@@ -177,6 +231,18 @@ function UploadStatusDetail({ upload }: { upload: uploadReducer.UploadEntry }) {
         </p>
       );
     case "success":
+      if (upload.uploadType === "buffer") {
+        return (
+          <div className="flex items-center gap-2 mt-0.5">
+            <Badge
+              variant="secondary"
+              className="text-green-500 text-[10px] px-1.5 py-0"
+            >
+              Sent to Buffer
+            </Badge>
+          </div>
+        );
+      }
       return (
         <div className="flex items-center gap-2 mt-0.5">
           <Badge

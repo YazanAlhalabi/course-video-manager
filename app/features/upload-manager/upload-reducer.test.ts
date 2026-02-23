@@ -19,7 +19,9 @@ const createUploadEntry = (
   title: "Test Video",
   progress: 0,
   status: "uploading",
+  uploadType: "youtube",
   youtubeVideoId: null,
+  bufferStage: null,
   errorMessage: null,
   retryCount: 0,
   ...overrides,
@@ -41,7 +43,9 @@ describe("uploadReducer", () => {
         title: "My Video",
         progress: 0,
         status: "uploading",
+        uploadType: "youtube",
         youtubeVideoId: null,
+        bufferStage: null,
         errorMessage: null,
         retryCount: 0,
       });
@@ -83,10 +87,37 @@ describe("uploadReducer", () => {
         title: "Restarted Video",
         progress: 0,
         status: "uploading",
+        uploadType: "youtube",
         youtubeVideoId: null,
+        bufferStage: null,
         errorMessage: null,
         retryCount: 0,
       });
+    });
+
+    it("should default uploadType to youtube", () => {
+      const state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "upload-1",
+        videoId: "video-1",
+        title: "My Video",
+      });
+
+      expect(state.uploads["upload-1"]!.uploadType).toBe("youtube");
+      expect(state.uploads["upload-1"]!.bufferStage).toBeNull();
+    });
+
+    it("should set uploadType to buffer and initialize bufferStage to copying", () => {
+      const state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "upload-1",
+        videoId: "video-1",
+        title: "Social Post",
+        uploadType: "buffer",
+      });
+
+      expect(state.uploads["upload-1"]!.uploadType).toBe("buffer");
+      expect(state.uploads["upload-1"]!.bufferStage).toBe("copying");
     });
   });
 
@@ -131,6 +162,55 @@ describe("uploadReducer", () => {
 
       expect(state.uploads["upload-1"]!.progress).toBe(75);
       expect(state.uploads["upload-2"]!.progress).toBe(20);
+    });
+  });
+
+  describe("UPDATE_BUFFER_STAGE", () => {
+    it("should update buffer stage for existing upload", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createUploadEntry({
+              uploadType: "buffer",
+              bufferStage: "copying",
+            }),
+          },
+        }),
+        { type: "UPDATE_BUFFER_STAGE", uploadId: "upload-1", stage: "syncing" }
+      );
+
+      expect(state.uploads["upload-1"]!.bufferStage).toBe("syncing");
+    });
+
+    it("should transition from syncing to sending-webhook", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createUploadEntry({
+              uploadType: "buffer",
+              bufferStage: "syncing",
+            }),
+          },
+        }),
+        {
+          type: "UPDATE_BUFFER_STAGE",
+          uploadId: "upload-1",
+          stage: "sending-webhook",
+        }
+      );
+
+      expect(state.uploads["upload-1"]!.bufferStage).toBe("sending-webhook");
+    });
+
+    it("should not modify state for non-existent upload", () => {
+      const initial = createState();
+      const state = reduce(initial, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "non-existent",
+        stage: "syncing",
+      });
+
+      expect(state).toBe(initial);
     });
   });
 
@@ -185,6 +265,49 @@ describe("uploadReducer", () => {
       );
 
       expect(state.uploads["upload-1"]!.errorMessage).toBeNull();
+    });
+
+    it("should work without youtubeVideoId for buffer uploads", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createUploadEntry({
+              uploadType: "buffer",
+              bufferStage: "sending-webhook",
+              progress: 100,
+            }),
+          },
+        }),
+        {
+          type: "UPLOAD_SUCCESS",
+          uploadId: "upload-1",
+        }
+      );
+
+      const upload = state.uploads["upload-1"]!;
+      expect(upload.status).toBe("success");
+      expect(upload.progress).toBe(100);
+      expect(upload.youtubeVideoId).toBeNull();
+      expect(upload.bufferStage).toBeNull();
+    });
+
+    it("should clear bufferStage on success", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createUploadEntry({
+              uploadType: "buffer",
+              bufferStage: "sending-webhook",
+            }),
+          },
+        }),
+        {
+          type: "UPLOAD_SUCCESS",
+          uploadId: "upload-1",
+        }
+      );
+
+      expect(state.uploads["upload-1"]!.bufferStage).toBeNull();
     });
   });
 
@@ -289,6 +412,41 @@ describe("uploadReducer", () => {
       });
 
       expect(state).toBe(initial);
+    });
+
+    it("should reset bufferStage to copying for buffer uploads", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createUploadEntry({
+              uploadType: "buffer",
+              bufferStage: "syncing",
+              status: "retrying",
+              retryCount: 1,
+            }),
+          },
+        }),
+        { type: "RETRY", uploadId: "upload-1" }
+      );
+
+      expect(state.uploads["upload-1"]!.bufferStage).toBe("copying");
+    });
+
+    it("should keep bufferStage null for youtube uploads", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createUploadEntry({
+              uploadType: "youtube",
+              status: "retrying",
+              retryCount: 1,
+            }),
+          },
+        }),
+        { type: "RETRY", uploadId: "upload-1" }
+      );
+
+      expect(state.uploads["upload-1"]!.bufferStage).toBeNull();
     });
   });
 
@@ -439,6 +597,68 @@ describe("uploadReducer", () => {
       expect(state.uploads["upload-2"]!.status).toBe("retrying");
       expect(state.uploads["upload-3"]!.status).toBe("error");
     });
+
+    it("should handle concurrent youtube and buffer uploads", () => {
+      let state = createState();
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "YouTube Upload",
+        uploadType: "youtube",
+      });
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Buffer Post",
+        uploadType: "buffer",
+      });
+
+      expect(state.uploads["yt-1"]!.uploadType).toBe("youtube");
+      expect(state.uploads["yt-1"]!.bufferStage).toBeNull();
+      expect(state.uploads["buf-1"]!.uploadType).toBe("buffer");
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("copying");
+
+      // Progress YouTube
+      state = reduce(state, {
+        type: "UPDATE_PROGRESS",
+        uploadId: "yt-1",
+        progress: 50,
+      });
+      // Progress Buffer through stages
+      state = reduce(state, {
+        type: "UPDATE_PROGRESS",
+        uploadId: "buf-1",
+        progress: 100,
+      });
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "syncing",
+      });
+
+      expect(state.uploads["yt-1"]!.progress).toBe(50);
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("syncing");
+
+      // Complete both
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "yt-1",
+        youtubeVideoId: "yt-abc",
+      });
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "buf-1",
+      });
+
+      expect(state.uploads["yt-1"]!.status).toBe("success");
+      expect(state.uploads["yt-1"]!.youtubeVideoId).toBe("yt-abc");
+      expect(state.uploads["buf-1"]!.status).toBe("success");
+      expect(state.uploads["buf-1"]!.youtubeVideoId).toBeNull();
+      expect(state.uploads["buf-1"]!.bufferStage).toBeNull();
+    });
   });
 
   describe("full retry lifecycle", () => {
@@ -518,6 +738,231 @@ describe("uploadReducer", () => {
       expect(state.uploads["upload-1"]!.status).toBe("success");
       expect(state.uploads["upload-1"]!.youtubeVideoId).toBe("yt-success");
       expect(state.uploads["upload-1"]!.retryCount).toBe(1);
+    });
+  });
+
+  describe("buffer upload lifecycle", () => {
+    it("should progress through all buffer stages to success", () => {
+      let state = createState();
+
+      // Start buffer upload
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Social Post",
+        uploadType: "buffer",
+      });
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("copying");
+      expect(state.uploads["buf-1"]!.uploadType).toBe("buffer");
+
+      // Copying progress
+      state = reduce(state, {
+        type: "UPDATE_PROGRESS",
+        uploadId: "buf-1",
+        progress: 50,
+      });
+      expect(state.uploads["buf-1"]!.progress).toBe(50);
+
+      state = reduce(state, {
+        type: "UPDATE_PROGRESS",
+        uploadId: "buf-1",
+        progress: 100,
+      });
+
+      // Transition to syncing
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "syncing",
+      });
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("syncing");
+
+      // Transition to sending-webhook
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "sending-webhook",
+      });
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("sending-webhook");
+
+      // Success
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "buf-1",
+      });
+      expect(state.uploads["buf-1"]!.status).toBe("success");
+      expect(state.uploads["buf-1"]!.bufferStage).toBeNull();
+      expect(state.uploads["buf-1"]!.progress).toBe(100);
+      expect(state.uploads["buf-1"]!.youtubeVideoId).toBeNull();
+    });
+
+    it("should handle error during copying stage", () => {
+      let state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Failing Copy",
+        uploadType: "buffer",
+      });
+
+      state = reduce(state, {
+        type: "UPDATE_PROGRESS",
+        uploadId: "buf-1",
+        progress: 30,
+      });
+
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Disk full",
+      });
+
+      expect(state.uploads["buf-1"]!.status).toBe("retrying");
+      expect(state.uploads["buf-1"]!.retryCount).toBe(1);
+      expect(state.uploads["buf-1"]!.errorMessage).toBe("Disk full");
+    });
+
+    it("should handle error during syncing stage", () => {
+      let state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Sync Fail",
+        uploadType: "buffer",
+      });
+
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "syncing",
+      });
+
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Dropbox sync timeout",
+      });
+
+      expect(state.uploads["buf-1"]!.status).toBe("retrying");
+      expect(state.uploads["buf-1"]!.errorMessage).toBe("Dropbox sync timeout");
+    });
+
+    it("should handle error during sending-webhook stage", () => {
+      let state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Webhook Fail",
+        uploadType: "buffer",
+      });
+
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "sending-webhook",
+      });
+
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Zapier webhook failed (500)",
+      });
+
+      expect(state.uploads["buf-1"]!.status).toBe("retrying");
+    });
+
+    it("should reset bufferStage to copying on retry", () => {
+      let state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Retrying Buffer",
+        uploadType: "buffer",
+      });
+
+      // Advance to syncing then error
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "syncing",
+      });
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Sync error",
+      });
+
+      expect(state.uploads["buf-1"]!.status).toBe("retrying");
+
+      // Retry resets to copying
+      state = reduce(state, { type: "RETRY", uploadId: "buf-1" });
+      expect(state.uploads["buf-1"]!.status).toBe("uploading");
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("copying");
+      expect(state.uploads["buf-1"]!.progress).toBe(0);
+    });
+
+    it("should go through full retry lifecycle for buffer upload", () => {
+      let state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Flaky Buffer",
+        uploadType: "buffer",
+      });
+
+      // First attempt fails during syncing
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "syncing",
+      });
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Error 1",
+      });
+      expect(state.uploads["buf-1"]!.status).toBe("retrying");
+
+      state = reduce(state, { type: "RETRY", uploadId: "buf-1" });
+      expect(state.uploads["buf-1"]!.bufferStage).toBe("copying");
+
+      // Second attempt fails during webhook
+      state = reduce(state, {
+        type: "UPDATE_BUFFER_STAGE",
+        uploadId: "buf-1",
+        stage: "sending-webhook",
+      });
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Error 2",
+      });
+      expect(state.uploads["buf-1"]!.status).toBe("retrying");
+
+      state = reduce(state, { type: "RETRY", uploadId: "buf-1" });
+
+      // Third attempt fails → final error
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "buf-1",
+        errorMessage: "Error 3",
+      });
+      expect(state.uploads["buf-1"]!.status).toBe("error");
+      expect(state.uploads["buf-1"]!.retryCount).toBe(3);
+    });
+
+    it("should dismiss buffer upload", () => {
+      let state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "buf-1",
+        videoId: "video-1",
+        title: "Buffer to Dismiss",
+        uploadType: "buffer",
+      });
+
+      state = reduce(state, { type: "DISMISS", uploadId: "buf-1" });
+      expect(state.uploads["buf-1"]).toBeUndefined();
     });
   });
 });

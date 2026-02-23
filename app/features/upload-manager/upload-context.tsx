@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import { uploadReducer, createInitialUploadState } from "./upload-reducer";
 import { startSSEUpload } from "./sse-upload-client";
+import { startSSESocialPost } from "./sse-social-client";
 
 export interface UploadContextType {
   uploads: uploadReducer.State["uploads"];
@@ -16,6 +17,11 @@ export interface UploadContextType {
     title: string,
     description: string,
     privacyStatus: "public" | "unlisted"
+  ) => string;
+  startSocialUpload: (
+    videoId: string,
+    title: string,
+    caption: string
   ) => string;
   dismissUpload: (uploadId: string) => void;
 }
@@ -35,10 +41,13 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const previousUploadsRef = useRef<uploadReducer.State["uploads"]>({});
 
-  // Stores description + privacyStatus for retries (reducer only tracks videoId/title)
+  // Stores description + privacyStatus for YouTube retries
   const uploadParamsRef = useRef<
     Map<string, { description: string; privacyStatus: "public" | "unlisted" }>
   >(new Map());
+
+  // Stores caption for Buffer retries
+  const socialParamsRef = useRef<Map<string, { caption: string }>>(new Map());
 
   const initiateSSEConnection = useCallback(
     (
@@ -68,6 +77,53 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
               type: "UPLOAD_SUCCESS",
               uploadId,
               youtubeVideoId,
+            });
+            abortControllersRef.current.delete(uploadId);
+          },
+          onError: (message) => {
+            dispatch({
+              type: "UPLOAD_ERROR",
+              uploadId,
+              errorMessage: message,
+            });
+            abortControllersRef.current.delete(uploadId);
+          },
+        }
+      );
+
+      abortControllersRef.current.set(uploadId, abortController);
+    },
+    []
+  );
+
+  const initiateSSESocialConnection = useCallback(
+    (uploadId: string, videoId: string, caption: string) => {
+      const existing = abortControllersRef.current.get(uploadId);
+      if (existing) {
+        existing.abort();
+      }
+
+      const abortController = startSSESocialPost(
+        { videoId, caption },
+        {
+          onProgress: (percentage) => {
+            dispatch({
+              type: "UPDATE_PROGRESS",
+              uploadId,
+              progress: percentage,
+            });
+          },
+          onStageChange: (stage) => {
+            dispatch({
+              type: "UPDATE_BUFFER_STAGE",
+              uploadId,
+              stage,
+            });
+          },
+          onComplete: () => {
+            dispatch({
+              type: "UPLOAD_SUCCESS",
+              uploadId,
             });
             abortControllersRef.current.delete(uploadId);
           },
@@ -118,6 +174,27 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     [initiateSSEConnection]
   );
 
+  const startSocialUpload = useCallback(
+    (videoId: string, title: string, caption: string) => {
+      const uploadId = generateUploadId();
+
+      socialParamsRef.current.set(uploadId, { caption });
+
+      dispatch({
+        type: "START_UPLOAD",
+        uploadId,
+        videoId,
+        title,
+        uploadType: "buffer",
+      });
+
+      initiateSSESocialConnection(uploadId, videoId, caption);
+
+      return uploadId;
+    },
+    [initiateSSESocialConnection]
+  );
+
   const dismissUpload = useCallback((uploadId: string) => {
     const abortController = abortControllersRef.current.get(uploadId);
     if (abortController) {
@@ -125,6 +202,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       abortControllersRef.current.delete(uploadId);
     }
     uploadParamsRef.current.delete(uploadId);
+    socialParamsRef.current.delete(uploadId);
     dispatch({ type: "DISMISS", uploadId });
   }, []);
 
@@ -139,22 +217,36 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       if (prevUpload.status === upload.status) continue;
 
       if (upload.status === "success") {
-        const youtubeStudioUrl = `https://studio.youtube.com/video/${upload.youtubeVideoId}/edit`;
-        const postUrl = `/videos/${upload.videoId}/post`;
+        if (upload.uploadType === "buffer") {
+          const postUrl = `/videos/${upload.videoId}/post`;
 
-        toast.success(`"${upload.title}" uploaded to YouTube`, {
-          duration: Infinity,
-          action: {
-            label: "YouTube Studio",
-            onClick: () => window.open(youtubeStudioUrl, "_blank"),
-          },
-          cancel: {
-            label: "Go to Post",
-            onClick: () => {
-              window.location.href = postUrl;
+          toast.success(`"${upload.title}" sent to Buffer`, {
+            duration: Infinity,
+            cancel: {
+              label: "Go to Post",
+              onClick: () => {
+                window.location.href = postUrl;
+              },
             },
-          },
-        });
+          });
+        } else {
+          const youtubeStudioUrl = `https://studio.youtube.com/video/${upload.youtubeVideoId}/edit`;
+          const postUrl = `/videos/${upload.videoId}/post`;
+
+          toast.success(`"${upload.title}" uploaded to YouTube`, {
+            duration: Infinity,
+            action: {
+              label: "YouTube Studio",
+              onClick: () => window.open(youtubeStudioUrl, "_blank"),
+            },
+            cancel: {
+              label: "Go to Post",
+              onClick: () => {
+                window.location.href = postUrl;
+              },
+            },
+          });
+        }
       }
 
       if (upload.status === "error") {
@@ -172,24 +264,34 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (upload.status === "retrying") {
-        // Auto-retry: reset to uploading and re-initiate SSE connection
         dispatch({ type: "RETRY", uploadId });
 
-        const params = uploadParamsRef.current.get(uploadId);
-        if (params) {
-          initiateSSEConnection(
-            uploadId,
-            upload.videoId,
-            upload.title,
-            params.description,
-            params.privacyStatus
-          );
+        if (upload.uploadType === "buffer") {
+          const params = socialParamsRef.current.get(uploadId);
+          if (params) {
+            initiateSSESocialConnection(
+              uploadId,
+              upload.videoId,
+              params.caption
+            );
+          }
+        } else {
+          const params = uploadParamsRef.current.get(uploadId);
+          if (params) {
+            initiateSSEConnection(
+              uploadId,
+              upload.videoId,
+              upload.title,
+              params.description,
+              params.privacyStatus
+            );
+          }
         }
       }
     }
 
     previousUploadsRef.current = current;
-  }, [state.uploads, initiateSSEConnection]);
+  }, [state.uploads, initiateSSEConnection, initiateSSESocialConnection]);
 
   // Clean up abort controllers on unmount
   useEffect(() => {
@@ -205,6 +307,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       value={{
         uploads: state.uploads,
         startUpload,
+        startSocialUpload,
         dismissUpload,
       }}
     >

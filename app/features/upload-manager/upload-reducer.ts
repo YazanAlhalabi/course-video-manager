@@ -1,5 +1,7 @@
 export namespace uploadReducer {
   export type UploadStatus = "uploading" | "retrying" | "success" | "error";
+  export type UploadType = "youtube" | "buffer";
+  export type BufferStage = "copying" | "syncing" | "sending-webhook";
 
   export interface UploadEntry {
     uploadId: string;
@@ -7,7 +9,9 @@ export namespace uploadReducer {
     title: string;
     progress: number;
     status: UploadStatus;
+    uploadType: UploadType;
     youtubeVideoId: string | null;
+    bufferStage: BufferStage | null;
     errorMessage: string | null;
     retryCount: number;
   }
@@ -22,12 +26,18 @@ export namespace uploadReducer {
         uploadId: string;
         videoId: string;
         title: string;
+        uploadType?: UploadType;
       }
     | { type: "UPDATE_PROGRESS"; uploadId: string; progress: number }
     | {
+        type: "UPDATE_BUFFER_STAGE";
+        uploadId: string;
+        stage: BufferStage;
+      }
+    | {
         type: "UPLOAD_SUCCESS";
         uploadId: string;
-        youtubeVideoId: string;
+        youtubeVideoId?: string;
       }
     | { type: "UPLOAD_ERROR"; uploadId: string; errorMessage: string }
     | { type: "RETRY"; uploadId: string }
@@ -54,7 +64,9 @@ export const uploadReducer = (
             title: action.title,
             progress: 0,
             status: "uploading",
+            uploadType: action.uploadType ?? "youtube",
             youtubeVideoId: null,
+            bufferStage: action.uploadType === "buffer" ? "copying" : null,
             errorMessage: null,
             retryCount: 0,
           },
@@ -78,6 +90,22 @@ export const uploadReducer = (
       };
     }
 
+    case "UPDATE_BUFFER_STAGE": {
+      const upload = state.uploads[action.uploadId];
+      if (!upload) return state;
+
+      return {
+        ...state,
+        uploads: {
+          ...state.uploads,
+          [action.uploadId]: {
+            ...upload,
+            bufferStage: action.stage,
+          },
+        },
+      };
+    }
+
     case "UPLOAD_SUCCESS": {
       const upload = state.uploads[action.uploadId];
       if (!upload) return state;
@@ -90,7 +118,8 @@ export const uploadReducer = (
             ...upload,
             status: "success",
             progress: 100,
-            youtubeVideoId: action.youtubeVideoId,
+            youtubeVideoId: action.youtubeVideoId ?? null,
+            bufferStage: null,
             errorMessage: null,
           },
         },
@@ -144,6 +173,7 @@ export const uploadReducer = (
             ...upload,
             status: "uploading",
             progress: 0,
+            bufferStage: upload.uploadType === "buffer" ? "copying" : null,
           },
         },
       };

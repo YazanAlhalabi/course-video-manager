@@ -6,7 +6,6 @@ import type { Route } from "./+types/videos.$videoId.thumbnails";
 import {
   CameraIcon,
   ImageIcon,
-  SaveIcon,
   Loader2Icon,
   ClipboardIcon,
   XIcon,
@@ -159,16 +158,29 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
     return () => document.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
-  const handleSave = () => {
+  // Auto-save after background removal completes and canvas has rendered
+  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !state.capturedPhoto) return;
+    if (
+      !state.pendingAutoSave ||
+      !state.previewDataUrl ||
+      state.saving ||
+      !canvas
+    )
+      return;
 
     dispatch({
       type: "save-requested",
       videoId,
       compositeDataUrl: canvas.toDataURL("image/png"),
     });
-  };
+  }, [
+    state.pendingAutoSave,
+    state.previewDataUrl,
+    state.saving,
+    videoId,
+    dispatch,
+  ]);
 
   const handleDelete = (thumbnailId: string) => {
     if (!confirm("Delete this thumbnail?")) return;
@@ -357,22 +369,13 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             </div>
           )}
 
-          <div className="mt-3 flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={state.saving || !state.capturedPhoto}
-            >
-              {state.saving ? (
-                <Loader2Icon className="animate-spin" />
-              ) : (
-                <SaveIcon />
-              )}
-              {state.saving
-                ? "Saving..."
-                : state.editingThumbnailId
-                  ? "Update Thumbnail"
-                  : "Save Thumbnail"}
-            </Button>
+          <div className="mt-3 flex items-center gap-2">
+            {state.saving && (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Loader2Icon className="size-4 animate-spin" />
+                <span>Saving...</span>
+              </div>
+            )}
             {state.editingThumbnailId && (
               <Button
                 variant="outline"

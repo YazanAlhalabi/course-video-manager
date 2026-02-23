@@ -15,6 +15,7 @@ export namespace thumbnailStateReducer {
     editingThumbnailId: string | null;
     loadingEdit: string | null;
     previewDataUrl: string | null;
+    pendingAutoSave: boolean;
   }
 
   export type Action =
@@ -35,7 +36,7 @@ export namespace thumbnailStateReducer {
     | { type: "cutout-position-changed"; value: number }
     // Save
     | { type: "save-requested"; videoId: string; compositeDataUrl: string }
-    | { type: "save-succeeded" }
+    | { type: "save-succeeded"; thumbnailId: string }
     | { type: "save-failed" }
     // Delete
     | { type: "delete-requested"; thumbnailId: string }
@@ -85,6 +86,7 @@ const INITIAL_EDITOR_STATE = {
   editingThumbnailId: null,
   backgroundRemovalError: null,
   previewDataUrl: null,
+  pendingAutoSave: false,
 } as const;
 
 export const createInitialThumbnailState = (): thumbnailStateReducer.State => ({
@@ -123,6 +125,7 @@ export const thumbnailStateReducer: EffectReducer<
         ...state,
         cutoutImage: action.dataUrl,
         removingBackground: false,
+        pendingAutoSave: true,
       };
     case "background-removal-failed":
       return {
@@ -171,13 +174,13 @@ export const thumbnailStateReducer: EffectReducer<
         cutoutPosition: state.cutoutPosition,
         editingThumbnailId: state.editingThumbnailId,
       });
-      return { ...state, saving: true };
+      return { ...state, saving: true, pendingAutoSave: false };
     case "save-succeeded":
       exec({ type: "revalidate" });
       return {
         ...state,
         saving: false,
-        ...INITIAL_EDITOR_STATE,
+        editingThumbnailId: action.thumbnailId,
       };
     case "save-failed":
       return { ...state, saving: false };

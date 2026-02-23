@@ -73,9 +73,13 @@ export function useThumbnailReducer(thumbnails: Thumbnail[]) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-        .then((response) => {
+        .then(async (response) => {
           if (!response.ok) throw new Error("Failed to save thumbnail");
-          dispatch({ type: "save-succeeded" });
+          const result = await response.json();
+          dispatch({
+            type: "save-succeeded",
+            thumbnailId: result.thumbnailId,
+          });
         })
         .catch((error) => {
           console.error("Failed to save thumbnail:", error);

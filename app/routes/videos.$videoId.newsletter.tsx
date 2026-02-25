@@ -18,6 +18,7 @@ import {
 } from "@/services/text-writing-agent";
 import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FilePreviewModal } from "@/components/file-preview-modal";
@@ -336,23 +337,20 @@ export default function NewsletterPage(props: Route.ComponentProps) {
   // Newsletter generation state
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Check if AI Hero post exists
-  const [aiHeroSlug, setAiHeroSlug] = useState<string | null>(null);
-  useEffect(() => {
+  // AI Hero URL input - pre-filled from localStorage slug if available
+  const [aiHeroUrl, setAiHeroUrl] = useState(() => {
     if (typeof localStorage !== "undefined") {
-      setAiHeroSlug(localStorage.getItem(`ai-hero-slug-${videoId}`));
+      const slug = localStorage.getItem(`ai-hero-slug-${videoId}`);
+      return slug ? `https://aihero.dev/${slug}` : "";
     }
-  }, [videoId]);
+    return "";
+  });
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       const transcriptEnabled =
         clipSections.length > 0 ? enabledSections.size > 0 : includeTranscript;
-
-      const aiHeroUrl = aiHeroSlug
-        ? `https://aihero.dev/${aiHeroSlug}`
-        : undefined;
 
       const response = await fetch(`/videos/${videoId}/completions`, {
         method: "POST",
@@ -374,7 +372,7 @@ export default function NewsletterPage(props: Route.ComponentProps) {
             includeCourseStructure && courseStructure
               ? courseStructure
               : undefined,
-          aiHeroUrl,
+          aiHeroUrl: aiHeroUrl.trim() || undefined,
         }),
       });
 
@@ -511,6 +509,18 @@ export default function NewsletterPage(props: Route.ComponentProps) {
         {/* Right panel: Newsletter interface */}
         <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
           <div className="max-w-2xl mx-auto w-full space-y-6">
+            {/* AI Hero URL input */}
+            <div className="space-y-2">
+              <Label htmlFor="ai-hero-url">AI Hero Post URL</Label>
+              <Input
+                id="ai-hero-url"
+                type="url"
+                value={aiHeroUrl}
+                onChange={(e) => setAiHeroUrl(e.target.value)}
+                placeholder="https://aihero.dev/your-post-slug"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="newsletter-content">Newsletter</Label>
@@ -518,7 +528,7 @@ export default function NewsletterPage(props: Route.ComponentProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleGenerate}
-                  disabled={isGenerating}
+                  disabled={isGenerating || !aiHeroUrl.trim()}
                 >
                   {isGenerating ? (
                     <>
@@ -544,25 +554,18 @@ export default function NewsletterPage(props: Route.ComponentProps) {
 
             {/* Copy & Open Kit button */}
             <div className="space-y-3">
-              <div className="relative group">
-                <Button
-                  onClick={handleCopyAndOpenKit}
-                  disabled={!aiHeroSlug || !newsletterContent.trim()}
-                  className="w-full"
-                  size="lg"
-                >
-                  <ClipboardCopyIcon className="h-4 w-4" />
-                  Copy & Open Kit
-                  <ExternalLinkIcon className="h-4 w-4" />
-                </Button>
-                {!aiHeroSlug && (
-                  <p className="text-sm text-destructive mt-1">
-                    Post to AI Hero first before sending the newsletter.
-                  </p>
-                )}
-              </div>
+              <Button
+                onClick={handleCopyAndOpenKit}
+                disabled={!newsletterContent.trim()}
+                className="w-full"
+                size="lg"
+              >
+                <ClipboardCopyIcon className="h-4 w-4" />
+                Copy & Open Kit
+                <ExternalLinkIcon className="h-4 w-4" />
+              </Button>
 
-              {!newsletterContent.trim() && aiHeroSlug && (
+              {!newsletterContent.trim() && (
                 <p className="text-sm text-muted-foreground text-center">
                   Generate or write newsletter content first.
                 </p>

@@ -51,6 +51,7 @@ import {
   CheckCircle2Icon,
   CheckIcon,
   ImageIcon,
+  LinkIcon,
   Loader2Icon,
   PlusIcon,
   SparklesIcon,
@@ -577,6 +578,60 @@ export default function PostPage(props: Route.ComponentProps) {
     }
   };
 
+  // Short link conversion state
+  const [isConvertingShortLinks, setIsConvertingShortLinks] = useState(false);
+
+  const handleConvertToShortLinks = async () => {
+    // Match aihero.dev URLs in the description
+    const urlRegex = /https?:\/\/aihero\.dev[^\s)>]*/g;
+    const matches = description.match(urlRegex);
+    if (!matches || matches.length === 0) {
+      toast("No aihero.dev links found", {
+        description: "The description doesn't contain any aihero.dev URLs.",
+      });
+      return;
+    }
+
+    // Deduplicate URLs
+    const uniqueUrls = [...new Set(matches)];
+
+    setIsConvertingShortLinks(true);
+    try {
+      let updatedDescription = description;
+      for (const url of uniqueUrls) {
+        const response = await fetch("/api/shortlinks/find-or-create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url,
+            description: `YouTube (${title || "Untitled"})`,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to create short link");
+        }
+
+        const { shortLinkUrl } = await response.json();
+        updatedDescription = updatedDescription.replaceAll(url, shortLinkUrl);
+      }
+
+      setDescription(updatedDescription);
+      toast("Links converted", {
+        description: `Converted ${uniqueUrls.length} aihero.dev URL${uniqueUrls.length > 1 ? "s" : ""} to short links.`,
+      });
+    } catch (error) {
+      console.error("Failed to convert short links:", error);
+      toast.error("Failed to convert links", {
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+      });
+    } finally {
+      setIsConvertingShortLinks(false);
+    }
+  };
+
   const handleFileClick = (filePath: string) => {
     setPreviewFilePath(filePath);
     setIsPreviewModalOpen(true);
@@ -726,6 +781,24 @@ export default function PostPage(props: Route.ComponentProps) {
                   placeholder="Enter video description..."
                   className="min-h-[300px] resize-y"
                 />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleConvertToShortLinks}
+                  disabled={isConvertingShortLinks || !description.trim()}
+                >
+                  {isConvertingShortLinks ? (
+                    <>
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      Converting...
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="h-4 w-4" />
+                      Convert to short links
+                    </>
+                  )}
+                </Button>
               </div>
 
               {/* Visibility */}

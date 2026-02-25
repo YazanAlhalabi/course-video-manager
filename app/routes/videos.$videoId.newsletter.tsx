@@ -359,7 +359,11 @@ export default function NewsletterPage(props: Route.ComponentProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [
-            { id: "1", role: "user", content: "Generate a newsletter." },
+            {
+              id: "1",
+              role: "user",
+              parts: [{ type: "text", text: "Generate a newsletter." }],
+            },
           ],
           mode: "newsletter",
           model: "claude-sonnet-4-20250514",

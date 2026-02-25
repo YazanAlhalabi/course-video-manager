@@ -72,7 +72,10 @@ export function GlobalUploadProgress() {
   if (!hasUploads) return null;
 
   return (
-    <div ref={dropdownRef} className="fixed top-0 left-0 right-0 z-50">
+    <div
+      ref={dropdownRef}
+      className="fixed top-[0px] left-[0px] right-[0px] z-50"
+    >
       {/* Thin progress bar */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}

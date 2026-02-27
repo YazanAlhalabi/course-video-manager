@@ -1,6 +1,6 @@
 import { Command, FileSystem } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
-import { Data, Effect } from "effect";
+import { Data, Effect, Stream } from "effect";
 import crypto from "node:crypto";
 import path from "node:path";
 import { tmpdir } from "os";
@@ -29,20 +29,39 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
           startTime?: number;
         }
       ) {
+        const args: string[] = ["-hide_banner", "-vn"];
+        if (opts.startTime != null) {
+          args.push("-ss", String(opts.startTime));
+        }
+        args.push(
+          "-i",
+          inputVideo,
+          "-af",
+          `silencedetect=n=${opts.threshold}dB:d=${opts.silenceDuration}`,
+          "-f",
+          "null",
+          "-"
+        );
+
         return yield* cpuSemaphore.withPermits(1)(
-          Effect.async<string, FFmpegError>((resume) => {
-            const { exec } =
-              require("child_process") as typeof import("child_process");
-            const cmdStr = `ffmpeg -hide_banner -vn ${opts.startTime != null ? `-ss ${opts.startTime}` : ""} -i "${inputVideo}" -af "silencedetect=n=${opts.threshold}dB:d=${opts.silenceDuration}" -f null - 2>&1`;
-            exec(
-              cmdStr,
-              { maxBuffer: 50 * 1024 * 1024 },
-              (_error, stdout, _stderr) => {
-                // ffmpeg exits non-zero with -f null, but we still get the output
-                resume(Effect.succeed(stdout.toString()));
-              }
-            );
-          })
+          Effect.scoped(
+            Effect.gen(function* () {
+              const process = yield* Command.start(
+                Command.make("ffmpeg", ...args)
+              );
+              // ffmpeg exits non-zero with -f null, but we still get the output
+              // silencedetect info is written to stderr
+              const [stdout, stderr] = yield* Effect.all(
+                [
+                  process.stdout.pipe(Stream.decodeText(), Stream.mkString),
+                  process.stderr.pipe(Stream.decodeText(), Stream.mkString),
+                ],
+                { concurrency: 2 }
+              );
+              yield* process.exitCode.pipe(Effect.ignore);
+              return stdout + stderr;
+            })
+          )
         );
       });
 
@@ -170,28 +189,24 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
         ];
 
         yield* gpuSemaphore.withPermits(1)(
-          Effect.async<void, FFmpegError>((resume) => {
-            const { exec } =
-              require("child_process") as typeof import("child_process");
-            const cmdStr = `ffmpeg ${args.map((a) => (a.includes(" ") || a.includes("[") || a.includes(";") ? `"${a}"` : a)).join(" ")}`;
-            exec(
-              cmdStr,
-              { maxBuffer: 50 * 1024 * 1024 },
-              (error, _stdout, _stderr) => {
-                if (error) {
-                  resume(
-                    Effect.fail(
-                      new FFmpegError({
-                        cause: error,
-                        message: `Failed to create concatenated video: ${error.message}`,
-                      })
-                    )
-                  );
-                } else {
-                  resume(Effect.succeed(undefined));
-                }
-              }
+          Effect.gen(function* () {
+            const code = yield* Command.exitCode(
+              Command.make("ffmpeg", ...args)
+            ).pipe(
+              Effect.mapError(
+                (e) =>
+                  new FFmpegError({
+                    cause: e,
+                    message: `Failed to create concatenated video: ${e.message}`,
+                  })
+              )
             );
+            if (code !== 0) {
+              yield* new FFmpegError({
+                cause: null,
+                message: `Failed to create concatenated video, exit code: ${code}`,
+              });
+            }
           })
         );
 
@@ -261,28 +276,24 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
         ];
 
         yield* cpuSemaphore.withPermits(1)(
-          Effect.async<void, FFmpegError>((resume) => {
-            const { exec } =
-              require("child_process") as typeof import("child_process");
-            const cmdStr = `ffmpeg ${args.map((a) => (a.includes(" ") || a.includes("=") ? `"${a}"` : a)).join(" ")}`;
-            exec(
-              cmdStr,
-              { maxBuffer: 50 * 1024 * 1024 },
-              (error, _stdout, _stderr) => {
-                if (error) {
-                  resume(
-                    Effect.fail(
-                      new FFmpegError({
-                        cause: error,
-                        message: `Failed to normalize audio: ${error.message}`,
-                      })
-                    )
-                  );
-                } else {
-                  resume(Effect.succeed(undefined));
-                }
-              }
+          Effect.gen(function* () {
+            const code = yield* Command.exitCode(
+              Command.make("ffmpeg", ...args)
+            ).pipe(
+              Effect.mapError(
+                (e) =>
+                  new FFmpegError({
+                    cause: e,
+                    message: `Failed to normalize audio: ${e.message}`,
+                  })
+              )
             );
+            if (code !== 0) {
+              yield* new FFmpegError({
+                cause: null,
+                message: `Failed to normalize audio, exit code: ${code}`,
+              });
+            }
           })
         );
 

@@ -65,6 +65,7 @@
     "lucide-react": "^0.525.0",
     "marked": "^17.0.1",
     "obs-websocket-js": "^5.0.6",
+    "openai": "^6.25.0",
     "postgres": "^3.4.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

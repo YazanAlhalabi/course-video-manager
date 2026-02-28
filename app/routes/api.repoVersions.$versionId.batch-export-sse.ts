@@ -10,6 +10,8 @@ import {
 import { FINAL_VIDEO_PADDING } from "@/features/video-editor/constants";
 import path from "node:path";
 
+const MAX_CONCURRENT_EXPORTS = 6;
+
 export const batchExportProgram = (
   versionId: string,
   sendEvent: (event: string, data: unknown) => void
@@ -72,7 +74,6 @@ export const batchExportProgram = (
       sendEvent("stage", { videoId: video.id, stage: "queued" });
     }
 
-    // Export all videos concurrently (gated by FFmpeg semaphores)
     yield* Effect.forEach(
       unexportedVideos,
       (video) =>
@@ -113,7 +114,7 @@ export const batchExportProgram = (
               })
             )
           ),
-      { concurrency: "unbounded" }
+      { concurrency: MAX_CONCURRENT_EXPORTS }
     );
   }).pipe(
     Effect.catchTag("NotFoundError", () =>

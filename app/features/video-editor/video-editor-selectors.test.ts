@@ -39,6 +39,7 @@ import {
   getShouldShowLastFrameOverlay,
   getBackButtonUrl,
   getShowCenterLine,
+  getTimelineItems,
 } from "./video-editor-selectors";
 
 // ---------------------------------------------------------------------------
@@ -810,5 +811,88 @@ describe("getShowCenterLine", () => {
 
   it("returns true when OBS is recording with Camera scene", () => {
     expect(getShowCenterLine({ ...obsRecording, scene: "Camera" })).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTimelineItems
+// ---------------------------------------------------------------------------
+
+describe("getTimelineItems", () => {
+  it("excludes optimistically-added clips", () => {
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("c1") }),
+      makeOptimisticClip({ frontendId: id("c2") }),
+      makeClipOnDatabase({ frontendId: id("c3") }),
+    ];
+    const result = getTimelineItems(items);
+    expect(result).toHaveLength(2);
+    expect(result.map((i) => i.frontendId)).toEqual([id("c1"), id("c3")]);
+  });
+
+  it("includes on-database clips", () => {
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("c1") }),
+      makeClipOnDatabase({ frontendId: id("c2") }),
+    ];
+    const result = getTimelineItems(items);
+    expect(result).toHaveLength(2);
+  });
+
+  it("includes clip sections (on-database)", () => {
+    const items: TimelineItem[] = [
+      makeClipSection(id("s1"), "Intro"),
+      makeClipOnDatabase({ frontendId: id("c1") }),
+      makeClipSection(id("s2"), "Body"),
+    ];
+    const result = getTimelineItems(items);
+    expect(result).toHaveLength(3);
+  });
+
+  it("excludes clip sections with shouldArchive", () => {
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("c1") }),
+      {
+        type: "clip-section-optimistically-added",
+        frontendId: id("s1"),
+        name: "Archived Section",
+        insertionOrder: 1,
+        shouldArchive: true,
+      },
+      makeClipSection(id("s2"), "Visible Section"),
+    ];
+    const result = getTimelineItems(items);
+    expect(result).toHaveLength(2);
+    expect(result.map((i) => i.frontendId)).toEqual([id("c1"), id("s2")]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(getTimelineItems([])).toEqual([]);
+  });
+
+  it("returns empty array when all items are optimistic clips", () => {
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1") }),
+      makeOptimisticClip({ frontendId: id("c2") }),
+    ];
+    expect(getTimelineItems(items)).toEqual([]);
+  });
+
+  it("preserves order of remaining items", () => {
+    const items: TimelineItem[] = [
+      makeClipSection(id("s1"), "Intro"),
+      makeOptimisticClip({ frontendId: id("c1") }),
+      makeClipOnDatabase({ frontendId: id("c2") }),
+      makeOptimisticClip({ frontendId: id("c3") }),
+      makeClipSection(id("s2"), "Body"),
+      makeClipOnDatabase({ frontendId: id("c4") }),
+    ];
+    const result = getTimelineItems(items);
+    expect(result.map((i) => i.frontendId)).toEqual([
+      id("s1"),
+      id("c2"),
+      id("s2"),
+      id("c4"),
+    ]);
   });
 });

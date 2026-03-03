@@ -17,6 +17,23 @@ export const DANGEROUS_TEXT_SIMILARITY_THRESHOLD = 40;
 // Top-level selectors (from video-editor.tsx)
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns items for the main timeline — on-database clips and clip sections.
+ * Excludes all optimistic clips and any items with shouldArchive.
+ */
+export const getTimelineItems = (items: TimelineItem[]): TimelineItem[] => {
+  return items.filter((item) => {
+    if (item.type === "optimistically-added") return false;
+    if (
+      item.type === "clip-section-optimistically-added" &&
+      item.shouldArchive
+    ) {
+      return false;
+    }
+    return true;
+  });
+};
+
 export const getClips = (items: TimelineItem[]): Clip[] => {
   return items.filter(isClip);
 };

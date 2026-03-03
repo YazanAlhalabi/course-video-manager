@@ -2,9 +2,12 @@ import { formatSecondsToTimeCode } from "@/services/utils";
 import type {
   Clip,
   ClipOnDatabase,
+  ClipOptimisticallyAdded,
   ClipSection,
   FrontendId,
   FrontendInsertionPoint,
+  RecordingSession,
+  SessionId,
   TimelineItem,
 } from "./clip-state-reducer";
 import type { OBSConnectionOuterState } from "./obs-connector";
@@ -32,6 +35,44 @@ export const getTimelineItems = (items: TimelineItem[]): TimelineItem[] => {
     }
     return true;
   });
+};
+
+export type SessionPanelData = {
+  sessionId: SessionId;
+  displayNumber: number;
+  isRecording: boolean;
+  pendingClips: ClipOptimisticallyAdded[];
+};
+
+/**
+ * Derives session panel data from sessions and items.
+ * Groups pending (non-archived) optimistic clips by session ID.
+ * Only includes sessions that have at least one pending clip.
+ * Sorted by display number (oldest first).
+ */
+export const getSessionPanels = (
+  items: TimelineItem[],
+  sessions: RecordingSession[]
+): SessionPanelData[] => {
+  const clipsBySession = new Map<SessionId, ClipOptimisticallyAdded[]>();
+
+  for (const item of items) {
+    if (item.type === "optimistically-added" && !item.shouldArchive) {
+      const clips = clipsBySession.get(item.sessionId) ?? [];
+      clips.push(item);
+      clipsBySession.set(item.sessionId, clips);
+    }
+  }
+
+  return sessions
+    .filter((session) => clipsBySession.has(session.id))
+    .map((session) => ({
+      sessionId: session.id,
+      displayNumber: session.displayNumber,
+      isRecording: session.isRecording,
+      pendingClips: clipsBySession.get(session.id)!,
+    }))
+    .sort((a, b) => a.displayNumber - b.displayNumber);
 };
 
 export const getClips = (items: TimelineItem[]): Clip[] => {

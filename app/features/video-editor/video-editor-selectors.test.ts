@@ -10,6 +10,7 @@ import type {
   TimelineItem,
 } from "./clip-state-reducer";
 import type { OBSConnectionOuterState } from "./obs-connector";
+import type { RecordingSession } from "./clip-state-reducer";
 import {
   DANGEROUS_TEXT_SIMILARITY_THRESHOLD,
   getClips,
@@ -40,6 +41,7 @@ import {
   getBackButtonUrl,
   getShowCenterLine,
   getTimelineItems,
+  getSessionPanels,
 } from "./video-editor-selectors";
 
 // ---------------------------------------------------------------------------
@@ -88,6 +90,15 @@ const makeClipSection = (
 });
 
 const id = (s: string) => s as FrontendId;
+const sid = (s: string) => s as SessionId;
+
+const makeSession = (
+  overrides: Partial<RecordingSession> & { id: SessionId }
+): RecordingSession => ({
+  displayNumber: 1,
+  isRecording: true,
+  ...overrides,
+});
 
 // ---------------------------------------------------------------------------
 // Top-level selectors
@@ -894,5 +905,129 @@ describe("getTimelineItems", () => {
       id("s2"),
       id("c4"),
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSessionPanels
+// ---------------------------------------------------------------------------
+
+describe("getSessionPanels", () => {
+  it("groups pending optimistic clips by session", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+      makeSession({ id: sid("s2"), displayNumber: 2 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s1") }),
+      makeOptimisticClip({ frontendId: id("c2"), sessionId: sid("s2") }),
+      makeOptimisticClip({ frontendId: id("c3"), sessionId: sid("s1") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(2);
+    expect(panels[0]!.sessionId).toBe(sid("s1"));
+    expect(panels[0]!.pendingClips.map((c) => c.frontendId)).toEqual([
+      id("c1"),
+      id("c3"),
+    ]);
+    expect(panels[1]!.sessionId).toBe(sid("s2"));
+    expect(panels[1]!.pendingClips.map((c) => c.frontendId)).toEqual([
+      id("c2"),
+    ]);
+  });
+
+  it("excludes sessions with no pending clips", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+      makeSession({ id: sid("s2"), displayNumber: 2 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s1") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.sessionId).toBe(sid("s1"));
+  });
+
+  it("excludes shouldArchive optimistic clips from pending", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s1") }),
+      makeOptimisticClip({
+        frontendId: id("c2"),
+        sessionId: sid("s1"),
+        shouldArchive: true,
+      }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.pendingClips).toHaveLength(1);
+    expect(panels[0]!.pendingClips[0]!.frontendId).toBe(id("c1"));
+  });
+
+  it("ignores non-optimistic items", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+    ];
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("c1") }),
+      makeClipSection(id("s1"), "Intro"),
+      makeOptimisticClip({ frontendId: id("c2"), sessionId: sid("s1") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.pendingClips).toHaveLength(1);
+  });
+
+  it("returns empty array when no sessions exist", () => {
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("c1") }),
+    ];
+    expect(getSessionPanels(items, [])).toEqual([]);
+  });
+
+  it("returns empty array when all optimistic clips are archived", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({
+        frontendId: id("c1"),
+        sessionId: sid("s1"),
+        shouldArchive: true,
+      }),
+    ];
+    expect(getSessionPanels(items, sessions)).toEqual([]);
+  });
+
+  it("sorts panels by display number (oldest first)", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s2"), displayNumber: 2 }),
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+      makeSession({ id: sid("s3"), displayNumber: 3 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s2") }),
+      makeOptimisticClip({ frontendId: id("c2"), sessionId: sid("s1") }),
+      makeOptimisticClip({ frontendId: id("c3"), sessionId: sid("s3") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels.map((p) => p.displayNumber)).toEqual([1, 2, 3]);
+  });
+
+  it("includes isRecording from session metadata", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1, isRecording: true }),
+      makeSession({ id: sid("s2"), displayNumber: 2, isRecording: false }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s1") }),
+      makeOptimisticClip({ frontendId: id("c2"), sessionId: sid("s2") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels[0]!.isRecording).toBe(true);
+    expect(panels[1]!.isRecording).toBe(false);
   });
 });

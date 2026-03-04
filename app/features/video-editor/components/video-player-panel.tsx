@@ -1,4 +1,5 @@
 import { AddVideoModal } from "@/components/add-video-modal";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatSecondsToTimeCode } from "@/services/utils";
 import { LiveMediaStream } from "./live-media-stream";
@@ -16,7 +17,7 @@ import {
   getShouldShowLastFrameOverlay as getShouldShowLastFrameOverlaySelector,
   getShowCenterLine as getShowCenterLineSelector,
 } from "../video-editor-selectors";
-import { AlertTriangleIcon, VideoOffIcon } from "lucide-react";
+import { AlertTriangleIcon, ClipboardIcon, VideoOffIcon } from "lucide-react";
 import { useFetcher } from "react-router";
 import { useContextSelector } from "use-context-selector";
 import {
@@ -336,7 +337,6 @@ export const VideoPlayerPanel = () => {
                 isChaptersCopied={isChaptersCopied}
                 copyYoutubeChaptersToClipboard={copyYoutubeChaptersToClipboard}
                 onAddVideoClick={() => setIsAddVideoModalOpen(true)}
-                onAddNoteFromClipboard={onAddNoteFromClipboard}
                 onRenameVideoClick={() => setIsRenameVideoModalOpen(true)}
                 onRevealInFileSystem={() => {
                   revealVideoFetcher.submit(
@@ -350,6 +350,10 @@ export const VideoPlayerPanel = () => {
                 isLogPathCopied={isLogPathCopied}
                 copyLogPathToClipboard={copyLogPathToClipboard}
               />
+              <Button variant="secondary" onClick={onAddNoteFromClipboard}>
+                <ClipboardIcon className="w-4 h-4 mr-1" />
+                Add Note from Clipboard
+              </Button>
             </div>
 
             {/* Tabbed panel for Suggestions and Table of Contents */}

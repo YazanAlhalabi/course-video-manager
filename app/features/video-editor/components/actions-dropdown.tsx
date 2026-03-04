@@ -17,7 +17,6 @@ import {
 import {
   CheckIcon,
   ChevronDown,
-  ClipboardIcon,
   CopyIcon,
   DownloadIcon,
   FilmIcon,
@@ -58,8 +57,6 @@ export const ActionsDropdown = (props: {
   copyYoutubeChaptersToClipboard: () => void;
   /** Callback to open "Add New Video" modal */
   onAddVideoClick: () => void;
-  /** Callback to open "Add Note from Clipboard" modal */
-  onAddNoteFromClipboard: () => void;
   /** Callback to open "Rename Video" modal */
   onRenameVideoClick: () => void;
   /** Callback to reveal video in file system */
@@ -231,16 +228,6 @@ export const ActionsDropdown = (props: {
             </div>
           </DropdownMenuItem>
         )}
-
-        <DropdownMenuItem onSelect={props.onAddNoteFromClipboard}>
-          <ClipboardIcon className="w-4 h-4 mr-2" />
-          <div className="flex flex-col">
-            <span className="font-medium">Add Note from Clipboard</span>
-            <span className="text-xs text-muted-foreground">
-              Paste notes or images for article writing
-            </span>
-          </div>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -736,9 +736,13 @@ export default function Component(props: Route.ComponentProps) {
                                   return (
                                     <ContextMenu key={video.id}>
                                       <ContextMenuTrigger asChild>
-                                        <Link
-                                          to={`/videos/${video.id}/edit`}
-                                          className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50 transition-colors cursor-context-menu"
+                                        <button
+                                          className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50 transition-colors cursor-context-menu w-full text-left"
+                                          onClick={() => {
+                                            navigate(
+                                              `/videos/${video.id}/edit`
+                                            );
+                                          }}
                                         >
                                           <div className="flex items-center gap-1.5 min-w-0">
                                             <FileVideo
@@ -760,7 +764,7 @@ export default function Component(props: Route.ComponentProps) {
                                               totalDuration
                                             )}
                                           </span>
-                                        </Link>
+                                        </button>
                                       </ContextMenuTrigger>
                                       <ContextMenuContent>
                                         <ContextMenuItem

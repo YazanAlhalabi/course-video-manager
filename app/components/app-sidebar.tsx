@@ -199,12 +199,16 @@ export function AppSidebar({
           {standaloneVideos.map((video) => (
             <ContextMenu key={video.id}>
               <ContextMenuTrigger asChild>
-                <Link
-                  to={`/videos/${video.id}/edit`}
-                  className="block w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
+                <button
+                  className="w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
+                  onClick={() => {
+                    navigate(`/videos/${video.id}/edit`, {
+                      preventScrollReset: true,
+                    });
+                  }}
                 >
                   {video.path}
-                </Link>
+                </button>
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem
@@ -290,12 +294,16 @@ export function AppSidebar({
             ) : (
               <ContextMenu key={plan.id}>
                 <ContextMenuTrigger asChild>
-                  <Link
-                    to={`/plans/${plan.id}`}
-                    className="block w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
+                  <button
+                    className="w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
+                    onClick={() => {
+                      navigate(`/plans/${plan.id}`, {
+                        preventScrollReset: true,
+                      });
+                    }}
                   >
                     {plan.title}
-                  </Link>
+                  </button>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <ContextMenuItem

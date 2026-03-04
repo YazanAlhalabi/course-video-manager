@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { useFetcher, useLocation } from "react-router";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 export function FeedbackModal(props: {
@@ -20,7 +20,18 @@ export function FeedbackModal(props: {
   const fetcher = useFetcher();
   const location = useLocation();
   const formRef = useRef<HTMLFormElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevState = useRef(fetcher.state);
+
+  const focusTextarea = useCallback(() => {
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, []);
+
+  useEffect(() => {
+    if (props.open) {
+      focusTextarea();
+    }
+  }, [props.open, focusTextarea]);
 
   useEffect(() => {
     if (prevState.current === "loading" && fetcher.state === "idle") {
@@ -28,18 +39,13 @@ export function FeedbackModal(props: {
         const openCount = (fetcher.data as { openIssueCount?: number | null })
           .openIssueCount;
         const countMsg = openCount != null ? ` ${openCount} open issues.` : "";
-        toast(`Feedback submitted! Thank you.${countMsg}`, {
-          action: {
-            label: "New feedback",
-            onClick: () => props.onOpenChange(true),
-          },
-        });
+        toast(`Feedback submitted! Thank you.${countMsg}`);
         formRef.current?.reset();
-        props.onOpenChange(false);
+        focusTextarea();
       }
     }
     prevState.current = fetcher.state;
-  }, [fetcher.state, fetcher.data, props]);
+  }, [fetcher.state, fetcher.data, focusTextarea]);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -61,6 +67,7 @@ export function FeedbackModal(props: {
           <div className="space-y-2">
             <Label htmlFor="feedback-description">Description</Label>
             <Textarea
+              ref={textareaRef}
               id="feedback-description"
               name="description"
               placeholder="Describe your feedback in detail..."

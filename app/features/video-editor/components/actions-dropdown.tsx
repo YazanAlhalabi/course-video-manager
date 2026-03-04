@@ -14,7 +14,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ExportModal } from "./export-modal";
 import {
   CheckIcon,
   ChevronDown,
@@ -47,10 +46,6 @@ export const ActionsDropdown = (props: {
   videoId: string;
   /** Lesson ID if video is part of a lesson (enables "Add New Video" option) */
   lessonId?: string;
-  /** Whether the export modal is open */
-  isExportModalOpen: boolean;
-  /** Callback to set export modal open state */
-  setIsExportModalOpen: (open: boolean) => void;
   /** Whether transcript has been copied (shows checkmark) */
   isCopied: boolean;
   /** Callback to copy transcript to clipboard */
@@ -194,16 +189,15 @@ export const ActionsDropdown = (props: {
             Export
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-64">
-            <ExportModal
-              isOpen={props.isExportModalOpen}
-              setIsOpen={props.setIsExportModalOpen}
-              onExport={props.onExport}
-              youtubeChapters={props.youtubeChapters}
-              isChaptersCopied={props.isChaptersCopied}
-              copyYoutubeChaptersToClipboard={
-                props.copyYoutubeChaptersToClipboard
-              }
-            />
+            <DropdownMenuItem onSelect={props.onExport}>
+              <DownloadIcon className="w-4 h-4 mr-2" />
+              <div className="flex flex-col">
+                <span className="font-medium">Export</span>
+                <span className="text-xs text-muted-foreground">
+                  Export video clips to file
+                </span>
+              </div>
+            </DropdownMenuItem>
 
             <DropdownMenuItem
               onSelect={() => {

@@ -105,8 +105,6 @@ export type VideoEditorContextType = {
 
   // Modal state (local useState, passed through context for access)
   exportToDavinciResolveFetcher: FetcherWithComponents<unknown>;
-  isExportModalOpen: boolean;
-  setIsExportModalOpen: (value: boolean) => void;
   isAddVideoModalOpen: boolean;
   setIsAddVideoModalOpen: (value: boolean) => void;
   onAddNoteFromClipboard: () => void;

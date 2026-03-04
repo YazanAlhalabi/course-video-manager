@@ -207,7 +207,6 @@ export const VideoEditor = (props: {
   const currentClipId = state.currentClipId;
 
   const exportToDavinciResolveFetcher = useFetcher();
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddVideoModalOpen, setIsAddVideoModalOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
   const [isRenameVideoModalOpen, setIsRenameVideoModalOpen] = useState(false);
@@ -434,8 +433,6 @@ export const VideoEditor = (props: {
 
       // Modal state (local useState, passed through context for access)
       exportToDavinciResolveFetcher,
-      isExportModalOpen,
-      setIsExportModalOpen,
       isAddVideoModalOpen,
       setIsAddVideoModalOpen,
       onAddNoteFromClipboard: () => setIsPasteModalOpen(true),
@@ -492,8 +489,6 @@ export const VideoEditor = (props: {
       isCopied,
       isChaptersCopied,
       exportToDavinciResolveFetcher,
-      isExportModalOpen,
-      setIsExportModalOpen,
       isAddVideoModalOpen,
       setIsAddVideoModalOpen,
       isRenameVideoModalOpen,

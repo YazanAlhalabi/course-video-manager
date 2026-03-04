@@ -127,14 +127,6 @@ export const VideoPlayerPanel = () => {
     (ctx) => ctx.exportToDavinciResolveFetcher
   );
   const videoId = useContextSelector(VideoEditorContext, (ctx) => ctx.videoId);
-  const isExportModalOpen = useContextSelector(
-    VideoEditorContext,
-    (ctx) => ctx.isExportModalOpen
-  );
-  const setIsExportModalOpen = useContextSelector(
-    VideoEditorContext,
-    (ctx) => ctx.setIsExportModalOpen
-  );
   const isCopied = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.isCopied
@@ -327,8 +319,6 @@ export const VideoPlayerPanel = () => {
                 exportToDavinciResolveFetcher={exportToDavinciResolveFetcher}
                 videoId={videoId}
                 lessonId={lessonId}
-                isExportModalOpen={isExportModalOpen}
-                setIsExportModalOpen={setIsExportModalOpen}
                 isCopied={isCopied}
                 copyTranscriptToClipboard={copyTranscriptToClipboard}
                 youtubeChapters={youtubeChapters}

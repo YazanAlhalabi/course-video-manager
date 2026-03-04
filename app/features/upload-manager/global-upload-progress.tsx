@@ -119,7 +119,7 @@ export function GlobalUploadProgress() {
               errorCount > 0
                 ? "text-destructive"
                 : isActive
-                  ? "text-blue-500"
+                  ? "text-white"
                   : "text-green-500"
             }`}
           />
@@ -127,7 +127,7 @@ export function GlobalUploadProgress() {
         {/* Center icon */}
         <span className="relative z-10">
           {isActive ? (
-            <Loader2 className="size-4 text-blue-500 animate-spin" />
+            <Loader2 className="size-4 text-white animate-spin" />
           ) : errorCount > 0 ? (
             <AlertCircle className="size-4 text-destructive" />
           ) : (

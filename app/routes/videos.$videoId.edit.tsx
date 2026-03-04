@@ -550,6 +550,12 @@ export const ComponentInner = (props: Route.ComponentProps) => {
       onAddClipSectionAt={(name, position, itemId) => {
         dispatch({ type: "add-clip-section-at", name, position, itemId });
       }}
+      onRestoreClip={(clipId) => {
+        dispatch({ type: "restore-clip", clipId });
+      }}
+      onPermanentlyRemoveArchived={(sessionId) => {
+        dispatch({ type: "permanently-remove-archived", sessionId });
+      }}
       obsConnectorState={obsConnector.state}
       items={clipState.items}
       sessions={clipState.sessions}

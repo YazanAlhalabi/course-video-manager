@@ -19,6 +19,7 @@ import type {
   FrontendId,
   FrontendInsertionPoint,
   RecordingSession,
+  SessionId,
   TimelineItem,
 } from "./clip-state-reducer";
 import { isClip } from "./clip-utils";
@@ -147,6 +148,8 @@ export const VideoEditor = (props: {
     position: "before" | "after",
     itemId: FrontendId
   ) => void;
+  onRestoreClip: (clipId: FrontendId) => void;
+  onPermanentlyRemoveArchived: (sessionId: SessionId) => void;
   error: EditorError | null;
   standaloneFiles: Array<{ path: string }>;
   files: Array<{ path: string; size: number; defaultEnabled: boolean }>;
@@ -387,6 +390,8 @@ export const VideoEditor = (props: {
       onAddClipSection: props.onAddClipSection,
       onUpdateClipSection: props.onUpdateClipSection,
       onAddClipSectionAt: props.onAddClipSectionAt,
+      onRestoreClip: props.onRestoreClip,
+      onPermanentlyRemoveArchived: props.onPermanentlyRemoveArchived,
       onClipFinished: () => {
         dispatch({ type: "clip-finished" });
       },
@@ -479,6 +484,8 @@ export const VideoEditor = (props: {
       props.onAddClipSection,
       props.onUpdateClipSection,
       props.onAddClipSectionAt,
+      props.onRestoreClip,
+      props.onPermanentlyRemoveArchived,
       copyTranscriptToClipboard,
       copyYoutubeChaptersToClipboard,
       youtubeChapters,

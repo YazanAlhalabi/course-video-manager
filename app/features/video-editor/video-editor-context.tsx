@@ -5,6 +5,7 @@ import type {
   FrontendId,
   FrontendInsertionPoint,
   RecordingSession,
+  SessionId,
   TimelineItem,
 } from "./clip-state-reducer";
 import type { SessionPanelData } from "./video-editor-selectors";
@@ -92,6 +93,8 @@ export type VideoEditorContextType = {
   onAddSectionBefore: (itemId: FrontendId, defaultName: string) => void;
   onAddSectionAfter: (itemId: FrontendId, defaultName: string) => void;
   generateDefaultClipSectionName: () => string;
+  onRestoreClip: (clipId: FrontendId) => void;
+  onPermanentlyRemoveArchived: (sessionId: SessionId) => void;
 
   // Clipboard
   copyTranscriptToClipboard: () => Promise<void>;

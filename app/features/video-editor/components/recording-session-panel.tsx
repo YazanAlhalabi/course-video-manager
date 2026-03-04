@@ -4,6 +4,7 @@ import {
   AlertTriangleIcon,
   Trash2Icon,
   ArchiveIcon,
+  Undo2Icon,
 } from "lucide-react";
 import { useContextSelector } from "use-context-selector";
 import { VideoEditorContext } from "../video-editor-context";
@@ -77,8 +78,10 @@ const PendingClipRow = ({
  */
 const ArchivedClipRow = ({
   clip,
+  onRestore,
 }: {
   clip: ClipOptimisticallyAdded | ClipOnDatabase;
+  onRestore: () => void;
 }) => {
   const isResolved = clip.type === "on-database";
 
@@ -96,6 +99,13 @@ const ArchivedClipRow = ({
       <span className="text-[10px] text-gray-600">
         #{clip.insertionOrder ?? "?"}
       </span>
+      <button
+        onClick={onRestore}
+        className="text-gray-500 hover:text-green-400 p-1 rounded hover:bg-gray-700/50 transition-colors"
+        title="Restore clip"
+      >
+        <Undo2Icon className="size-3.5" />
+      </button>
     </div>
   );
 };
@@ -107,6 +117,14 @@ const SessionPanel = ({ panel }: { panel: SessionPanelData }) => {
   const dispatch = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.dispatch
+  );
+  const onRestoreClip = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.onRestoreClip
+  );
+  const onPermanentlyRemoveArchived = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.onPermanentlyRemoveArchived
   );
 
   const hasArchived = panel.archivedClips.length > 0;
@@ -148,14 +166,24 @@ const SessionPanel = ({ panel }: { panel: SessionPanelData }) => {
       {/* Archived sub-section — always visible when items exist */}
       {hasArchived && (
         <div className="border-t border-gray-700/50">
-          <div className="px-4 py-2 bg-red-950/20">
+          <div className="px-4 py-2 bg-red-950/20 flex items-center justify-between">
             <span className="text-xs text-red-300/70">
               {panel.archivedClips.length} deleted
             </span>
+            <button
+              onClick={() => onPermanentlyRemoveArchived(panel.sessionId)}
+              className="text-xs text-red-400/70 hover:text-red-300 transition-colors"
+            >
+              Clear all
+            </button>
           </div>
           <div className="p-2 space-y-1">
             {panel.archivedClips.map((clip) => (
-              <ArchivedClipRow key={clip.frontendId} clip={clip} />
+              <ArchivedClipRow
+                key={clip.frontendId}
+                clip={clip}
+                onRestore={() => onRestoreClip(clip.frontendId)}
+              />
             ))}
           </div>
         </div>

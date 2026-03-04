@@ -26,7 +26,6 @@ export type OBSRecordingState = {
   profile: string;
   scene: string;
   latestOutputPath: string;
-  hasSpeechBeenDetected: boolean;
 };
 
 export type OBSConnectionOuterState =
@@ -207,9 +206,6 @@ export namespace useOBSConnector {
         outputPath: string;
       }
     | {
-        type: "speech-detected";
-      }
-    | {
         type: "scene-changed";
         scene: string;
       };
@@ -307,7 +303,6 @@ const obsConnectorReducer: EffectReducer<
           profile: state.profile,
           scene: state.scene,
           latestOutputPath: action.outputPath,
-          hasSpeechBeenDetected: false,
         };
       }
 
@@ -331,16 +326,6 @@ const obsConnectorReducer: EffectReducer<
       }
 
       throw new Error("Obs stopped recording but not recording or connected");
-    }
-    case "speech-detected": {
-      if (state.type === "obs-recording") {
-        return {
-          ...state,
-          hasSpeechBeenDetected: true,
-        };
-      }
-
-      throw new Error("Speech detected but not recording");
     }
   }
 };
@@ -366,7 +351,7 @@ export const useOBSConnector = (props: {
 }) => {
   const [websocket] = useState(() => new OBSWebSocket());
 
-  const [state, dispatch] = useEffectReducer(
+  const [state] = useEffectReducer(
     obsConnectorReducer,
     (exec) => {
       exec({
@@ -485,13 +470,6 @@ export const useOBSConnector = (props: {
 
   useWatchForSpeechDetected({
     state: speechDetectorState,
-    onSpeechPartEnded: () => {
-      if (state.type === "obs-recording" && !state.hasSpeechBeenDetected) {
-        dispatch({
-          type: "speech-detected",
-        });
-      }
-    },
     onSpeechPartStarted: (soundDetectionId) => {
       if (state.type === "obs-recording") {
         props.onNewClipOptimisticallyAdded({

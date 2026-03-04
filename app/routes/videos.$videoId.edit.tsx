@@ -24,7 +24,7 @@ import {
   INSERTION_POINT_ID,
   RECORDING_SESSION_PANELS_ID,
 } from "@/features/video-editor/constants";
-import { data, useNavigate } from "react-router";
+import { data, useNavigate, useRevalidator } from "react-router";
 import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
 import { Array as EffectArray } from "effect";
 import { sortByOrder } from "@/lib/sort-by-order";
@@ -552,6 +552,22 @@ export const ComponentInner = (props: Route.ComponentProps) => {
       dispatch({ type: "recording-stopped" });
     }
   }, [obsConnector.state.type]);
+
+  // Revalidate loader data when editor becomes idle (all sessions done)
+  const revalidator = useRevalidator();
+  const hasRevalidatedRef = useRef(false);
+  const isEditorIdle =
+    clipState.sessions.length > 0 &&
+    clipState.sessions.every((s) => s.status === "done");
+
+  useEffect(() => {
+    if (isEditorIdle && !hasRevalidatedRef.current) {
+      hasRevalidatedRef.current = true;
+      revalidator.revalidate();
+    } else if (!isEditorIdle) {
+      hasRevalidatedRef.current = false;
+    }
+  }, [isEditorIdle]);
 
   return (
     <VideoEditor

@@ -397,6 +397,40 @@ describe("clipStateReducer", () => {
     });
   });
 
+  describe("Deleting Orphaned Clips", () => {
+    it("Should immediately remove an orphaned clip when deleted", () => {
+      const tester = new ReducerTester(clipStateReducer, createInitialState());
+
+      tester
+        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send(
+          fromPartial({
+            type: "new-optimistic-clip-detected",
+            soundDetectionId: "sound-1",
+          })
+        )
+        .send({ type: "recording-stopped" });
+
+      const sessionId = tester.getState().sessions[0]!.id;
+
+      // Mark clip as orphaned via session-polling-complete
+      tester.send({ type: "session-polling-complete", sessionId });
+
+      const orphanedClip = tester.getState()
+        .items[0] as ClipOptimisticallyAdded;
+      expect(orphanedClip.isOrphaned).toBe(true);
+
+      // Delete the orphaned clip
+      tester.send({
+        type: "clips-deleted",
+        clipIds: [orphanedClip.frontendId],
+      });
+
+      // Clip should be completely removed, not marked as shouldArchive
+      expect(tester.getState().items).toHaveLength(0);
+    });
+  });
+
   describe("Insertion Point", () => {
     it("Should allow for inserting clips at the start of the video", async () => {
       const tester = new ReducerTester(clipStateReducer, createInitialState());

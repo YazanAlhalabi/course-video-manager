@@ -1408,7 +1408,11 @@ const archiveClips = (
 
     const itemToReplace = items[index]!;
     if (itemToReplace.type === "optimistically-added") {
-      itemToReplace.shouldArchive = true;
+      if (itemToReplace.isOrphaned) {
+        items[index] = undefined;
+      } else {
+        itemToReplace.shouldArchive = true;
+      }
     } else if (itemToReplace.type === "on-database") {
       clipsToArchive.add(itemToReplace.databaseId);
       items[index] = undefined;

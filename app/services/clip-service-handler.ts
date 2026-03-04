@@ -107,6 +107,18 @@ const getOrderedItems = Effect.fn("getOrderedItems")(function* (
 });
 
 // ============================================================================
+// Helper: Touch video updatedAt timestamp
+// ============================================================================
+
+const touchVideoUpdatedAt = (db: DrizzleService, videoId: string) =>
+  Effect.promise(() =>
+    db
+      .update(videos)
+      .set({ updatedAt: new Date() })
+      .where(eq(videos.id, videoId))
+  );
+
+// ============================================================================
 // Helper: Append clips at an insertion point
 // ============================================================================
 
@@ -312,6 +324,8 @@ const appendFromObsImpl = (
       clips: clipsToAdd,
     });
 
+    yield* touchVideoUpdatedAt(db, videoId);
+
     const totalDuplicatesSkipped =
       latestOBSVideoClips.clips.length - result.length;
 
@@ -389,6 +403,8 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
       case "append-clips": {
         const result = yield* appendClipsAtInsertionPoint(db, event.input);
 
+        yield* touchVideoUpdatedAt(db, event.input.videoId);
+
         logger.log(event.input.videoId, {
           type: "clips-appended",
           videoId: event.input.videoId,
@@ -437,6 +453,7 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
             })
           );
           if (firstClip) {
+            yield* touchVideoUpdatedAt(db, firstClip.videoId);
             logger.log(firstClip.videoId, {
               type: "clips-archived",
               clipIds: [...event.clipIds],
@@ -463,6 +480,7 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
             })
           );
           if (firstClip) {
+            yield* touchVideoUpdatedAt(db, firstClip.videoId);
             logger.log(firstClip.videoId, {
               type: "clips-unarchived",
               clipIds: [...event.clipIds],
@@ -493,6 +511,7 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
             })
           );
           if (firstClip) {
+            yield* touchVideoUpdatedAt(db, firstClip.videoId);
             logger.log(firstClip.videoId, {
               type: "clips-updated",
               clips: event.clips.map((c) => ({
@@ -521,6 +540,7 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
           })
         );
         if (clip) {
+          yield* touchVideoUpdatedAt(db, clip.videoId);
           logger.log(clip.videoId, {
             type: "beat-updated",
             clipId: event.clipId,
@@ -576,6 +596,8 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
             .set({ order: newOrder })
             .where(eq(clips.id, event.clipId))
         );
+
+        yield* touchVideoUpdatedAt(db, clip.videoId);
 
         logger.log(clip.videoId, {
           type: "clip-reordered",
@@ -650,6 +672,8 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
           throw new Error("Failed to create clip section");
         }
 
+        yield* touchVideoUpdatedAt(db, videoId);
+
         logger.log(videoId, {
           type: "clip-section-created",
           sectionId: clipSection.id,
@@ -706,6 +730,8 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
           throw new Error("Failed to create clip section");
         }
 
+        yield* touchVideoUpdatedAt(db, videoId);
+
         logger.log(videoId, {
           type: "clip-section-created",
           sectionId: clipSection.id,
@@ -730,6 +756,7 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
           })
         );
         if (section) {
+          yield* touchVideoUpdatedAt(db, section.videoId);
           logger.log(section.videoId, {
             type: "clip-section-updated",
             clipSectionId: event.clipSectionId,
@@ -756,6 +783,7 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
             })
           );
           if (firstSection) {
+            yield* touchVideoUpdatedAt(db, firstSection.videoId);
             logger.log(firstSection.videoId, {
               type: "clip-sections-archived",
               clipSectionIds: [...event.clipSectionIds],
@@ -812,6 +840,8 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
             .set({ order: newOrder })
             .where(eq(clipSections.id, event.clipSectionId))
         );
+
+        yield* touchVideoUpdatedAt(db, clipSection.videoId);
 
         logger.log(clipSection.videoId, {
           type: "clip-section-reordered",
@@ -923,6 +953,8 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
                 .where(eq(clipSections.id, clipSectionId))
             );
           }
+
+          yield* touchVideoUpdatedAt(db, sourceVideoId);
         }
 
         logger.log(sourceVideoId, {

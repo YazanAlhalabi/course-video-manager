@@ -1120,6 +1120,24 @@ describe("getSessionPanels", () => {
     expect(panels[1]!.isRecording).toBe(false);
   });
 
+  it("includes done sessions with orphaned optimistic clips", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1, status: "done" }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({
+        frontendId: id("c1"),
+        sessionId: sid("s1"),
+        isOrphaned: true,
+      }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.sessionId).toBe(sid("s1"));
+    expect(panels[0]!.pendingClips).toHaveLength(1);
+    expect(panels[0]!.pendingClips[0]!.isOrphaned).toBe(true);
+  });
+
   it("includes recording sessions even with no clips", () => {
     const sessions: RecordingSession[] = [
       makeSession({ id: sid("s1"), displayNumber: 1, status: "recording" }),

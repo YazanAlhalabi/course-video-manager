@@ -305,6 +305,13 @@ export const ComponentInner = (props: Route.ComponentProps) => {
           });
       },
       "scroll-to-insertion-point": () => {
+        const recordingPanel = document.querySelector(
+          "[data-session-recording]"
+        );
+        if (recordingPanel) {
+          recordingPanel.scrollIntoView({ behavior: "smooth", block: "end" });
+          return;
+        }
         const sessionPanels = document.getElementById(
           RECORDING_SESSION_PANELS_ID
         );

@@ -131,7 +131,10 @@ const SessionPanel = ({ panel }: { panel: SessionPanelData }) => {
   const hasArchived = panel.archivedClips.length > 0;
 
   return (
-    <div className="rounded-lg border border-gray-700 overflow-hidden">
+    <div
+      data-session-recording={panel.isRecording ? "true" : undefined}
+      className="rounded-lg border border-gray-700 overflow-hidden"
+    >
       {/* Header */}
       <div className="bg-gray-800/80 px-4 py-2.5 flex items-center gap-3">
         <span className="text-sm font-medium text-gray-200">

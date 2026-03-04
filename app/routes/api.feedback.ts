@@ -10,12 +10,16 @@ const execFileAsync = promisify(execFile);
 export const action = async (args: Route.ActionArgs) => {
   const formData = await args.request.formData();
   const description = formData.get("description");
+  const url = formData.get("url");
 
   if (typeof description !== "string" || !description.trim()) {
     throw data("Description is required", { status: 400 });
   }
 
-  const body = description.trim();
+  const descriptionText = description.trim();
+  const body = url
+    ? `${descriptionText}\n\n---\nSubmitted from: \`${url}\``
+    : descriptionText;
 
   // Auto-generate a short title from the description using Haiku
   let title: string;
@@ -24,13 +28,13 @@ export const action = async (args: Route.ActionArgs) => {
       model: anthropic("claude-haiku-4-5-20251001"),
       system:
         "Generate a short GitHub issue title (under 80 characters) from the user's feedback description. Output ONLY the title, nothing else.",
-      messages: [{ role: "user", content: body }],
+      messages: [{ role: "user", content: descriptionText }],
     });
     title = result.text.trim();
   } catch (error) {
     console.error("Failed to generate title, using fallback:", error);
     // Fallback: use the first line/sentence of the description, truncated
-    title = body.split(/[.\n]/)[0]!.slice(0, 80);
+    title = descriptionText.split(/[.\n]/)[0]!.slice(0, 80);
   }
 
   try {

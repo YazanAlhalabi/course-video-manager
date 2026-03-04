@@ -9,7 +9,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
-import { useFetcher } from "react-router";
+import { useFetcher, useLocation } from "react-router";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ export function FeedbackModal(props: {
   onOpenChange: (open: boolean) => void;
 }) {
   const fetcher = useFetcher();
+  const location = useLocation();
   const formRef = useRef<HTMLFormElement>(null);
   const prevState = useRef(fetcher.state);
 
@@ -48,6 +49,7 @@ export function FeedbackModal(props: {
           action="/api/feedback"
           className="space-y-4"
         >
+          <input type="hidden" name="url" value={location.pathname} />
           <div className="space-y-2">
             <Label htmlFor="feedback-description">Description</Label>
             <Textarea

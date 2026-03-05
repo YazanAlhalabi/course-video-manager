@@ -3,7 +3,6 @@ import { useContextSelector } from "use-context-selector";
 import { VideoEditorContext } from "../video-editor-context";
 import { SessionPanel } from "./recording-session-panel";
 import { INSERTION_POINT_ID, RECORDING_SESSION_PANELS_ID } from "../constants";
-import { cn } from "@/lib/utils";
 
 /**
  * Unified component that merges the insertion point indicator with recording
@@ -20,15 +19,7 @@ export const InsertionPointWithSession = () => {
   const hasSessions = sessionPanels.length > 0;
 
   return (
-    <div
-      id={INSERTION_POINT_ID}
-      className={cn(
-        "rounded-lg transition-all duration-300",
-        hasSessions
-          ? "border border-blue-500/30 bg-blue-950/10 p-3"
-          : "border border-transparent p-0"
-      )}
-    >
+    <div id={INSERTION_POINT_ID}>
       {/* Insertion point line */}
       <div className="flex items-center justify-center gap-4">
         <div className="border-t-2 w-full border-blue-200 border-dashed flex-1" />

@@ -17,6 +17,7 @@ import {
 import {
   CheckIcon,
   ChevronDown,
+  CodeIcon,
   CopyIcon,
   DownloadIcon,
   FilmIcon,
@@ -61,6 +62,8 @@ export const ActionsDropdown = (props: {
   onRenameVideoClick: () => void;
   /** Callback to reveal video in file system (hidden when no exported file) */
   onRevealInFileSystem?: () => void;
+  /** Callback to open repo in VS Code (hidden when no repo) */
+  onOpenInVSCode?: () => void;
   /** Whether log path has been copied (shows checkmark) */
   isLogPathCopied: boolean;
   /** Callback to copy log path to clipboard */
@@ -109,6 +112,18 @@ export const ActionsDropdown = (props: {
               <span className="font-medium">Reveal in File System</span>
               <span className="text-xs text-muted-foreground">
                 Open in Windows Explorer
+              </span>
+            </div>
+          </DropdownMenuItem>
+        )}
+
+        {props.onOpenInVSCode && (
+          <DropdownMenuItem onSelect={props.onOpenInVSCode}>
+            <CodeIcon className="w-4 h-4 mr-2" />
+            <div className="flex flex-col">
+              <span className="font-medium">Open in VS Code</span>
+              <span className="text-xs text-muted-foreground">
+                Open repo in VS Code
               </span>
             </div>
           </DropdownMenuItem>

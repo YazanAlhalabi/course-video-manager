@@ -183,6 +183,7 @@ export const VideoPlayerPanel = () => {
     (ctx) => ctx.hasExplainerFolder
   );
   const revealVideoFetcher = useFetcher();
+  const openInVSCodeFetcher = useFetcher();
 
   const [exportFileExists, setExportFileExists] = useState(false);
   useEffect(() => {
@@ -354,6 +355,19 @@ export const VideoPlayerPanel = () => {
                           {
                             method: "post",
                             action: `/api/videos/${videoId}/reveal`,
+                          }
+                        );
+                      }
+                    : undefined
+                }
+                onOpenInVSCode={
+                  lessonId
+                    ? () => {
+                        openInVSCodeFetcher.submit(
+                          {},
+                          {
+                            method: "post",
+                            action: `/api/videos/${videoId}/open-in-vscode`,
                           }
                         );
                       }

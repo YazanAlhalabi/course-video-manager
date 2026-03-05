@@ -942,14 +942,14 @@ describe("getSessionPanels", () => {
     ];
     const panels = getSessionPanels(items, sessions);
     expect(panels).toHaveLength(2);
-    expect(panels[0]!.sessionId).toBe(sid("s1"));
+    expect(panels[0]!.sessionId).toBe(sid("s2"));
     expect(panels[0]!.pendingClips.map((c) => c.frontendId)).toEqual([
+      id("c2"),
+    ]);
+    expect(panels[1]!.sessionId).toBe(sid("s1"));
+    expect(panels[1]!.pendingClips.map((c) => c.frontendId)).toEqual([
       id("c1"),
       id("c3"),
-    ]);
-    expect(panels[1]!.sessionId).toBe(sid("s2"));
-    expect(panels[1]!.pendingClips.map((c) => c.frontendId)).toEqual([
-      id("c2"),
     ]);
   });
 
@@ -1096,7 +1096,7 @@ describe("getSessionPanels", () => {
     expect(panels[0]!.pendingClips).toHaveLength(1);
   });
 
-  it("sorts panels by display number (oldest first)", () => {
+  it("sorts panels by display number (newest first)", () => {
     const sessions: RecordingSession[] = [
       makeSession({ id: sid("s2"), displayNumber: 2 }),
       makeSession({ id: sid("s1"), displayNumber: 1 }),
@@ -1108,7 +1108,7 @@ describe("getSessionPanels", () => {
       makeOptimisticClip({ frontendId: id("c3"), sessionId: sid("s3") }),
     ];
     const panels = getSessionPanels(items, sessions);
-    expect(panels.map((p) => p.displayNumber)).toEqual([1, 2, 3]);
+    expect(panels.map((p) => p.displayNumber)).toEqual([3, 2, 1]);
   });
 
   it("derives isRecording from session status", () => {
@@ -1121,8 +1121,8 @@ describe("getSessionPanels", () => {
       makeOptimisticClip({ frontendId: id("c2"), sessionId: sid("s2") }),
     ];
     const panels = getSessionPanels(items, sessions);
-    expect(panels[0]!.isRecording).toBe(true);
-    expect(panels[1]!.isRecording).toBe(false);
+    expect(panels[0]!.isRecording).toBe(false);
+    expect(panels[1]!.isRecording).toBe(true);
   });
 
   it("includes done sessions with orphaned optimistic clips in archivedClips", () => {

@@ -100,7 +100,7 @@ export const getSessionPanels = (
       pendingClips: pendingBySession.get(session.id) ?? [],
       archivedClips: archivedBySession.get(session.id) ?? [],
     }))
-    .sort((a, b) => a.displayNumber - b.displayNumber);
+    .sort((a, b) => b.displayNumber - a.displayNumber);
 };
 
 export const getClips = (items: TimelineItem[]): Clip[] => {

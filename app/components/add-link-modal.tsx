@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
 export function AddLinkModal(props: {
@@ -16,7 +16,11 @@ export function AddLinkModal(props: {
   onOpenChange: (open: boolean) => void;
 }) {
   const fetcher = useFetcher();
+  const titleFetcher = useFetcher<{ title: string | null }>();
   const [urlError, setUrlError] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const isFetchingTitle = titleFetcher.state !== "idle";
 
   const validateUrl = (url: string): boolean => {
     try {
@@ -28,6 +32,17 @@ export function AddLinkModal(props: {
       return false;
     }
   };
+
+  useEffect(() => {
+    if (
+      titleFetcher.state === "idle" &&
+      titleFetcher.data?.title &&
+      titleInputRef.current &&
+      !titleInputRef.current.value
+    ) {
+      titleInputRef.current.value = titleFetcher.data.title;
+    }
+  }, [titleFetcher.state, titleFetcher.data]);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -53,16 +68,6 @@ export function AddLinkModal(props: {
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="link-title">Title</Label>
-            <Input
-              id="link-title"
-              name="title"
-              placeholder="My Link"
-              required
-              autoFocus
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="link-url">URL</Label>
             <Input
               id="link-url"
@@ -70,13 +75,44 @@ export function AddLinkModal(props: {
               type="url"
               placeholder="https://example.com"
               required
+              autoFocus
               onChange={(e) => {
                 if (urlError && e.target.value) {
                   validateUrl(e.target.value);
                 }
               }}
+              onPaste={(e) => {
+                const pastedText = e.clipboardData.getData("text");
+                try {
+                  new URL(pastedText);
+                  setUrlError(null);
+                  titleFetcher.submit(
+                    { url: pastedText },
+                    { method: "post", action: "/api/links/fetch-title" }
+                  );
+                } catch {
+                  // Not a valid URL, skip fetching title
+                }
+              }}
             />
             {urlError && <p className="text-sm text-red-500">{urlError}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="link-title">Title</Label>
+            <div className="relative">
+              <Input
+                ref={titleInputRef}
+                id="link-title"
+                name="title"
+                placeholder="My Link"
+                required
+              />
+              {isFetchingTitle && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="link-description">Description (optional)</Label>

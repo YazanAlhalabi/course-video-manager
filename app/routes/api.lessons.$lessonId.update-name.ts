@@ -1,8 +1,10 @@
 import { Console, Data, Effect, Schema } from "effect";
 import type { Route } from "./+types/api.lessons.$lessonId.update-name";
 import { DBFunctionsService } from "@/services/db-service.server";
+import { RepoWriteService } from "@/services/repo-write-service";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
+import { parseLessonPath } from "@/services/lesson-path-service";
 import { data } from "react-router";
 
 const updateLessonNameSchema = Schema.Struct({
@@ -28,13 +30,14 @@ export const action = async (args: Route.ActionArgs) => {
   const formDataObject = Object.fromEntries(formData);
 
   return Effect.gen(function* () {
-    const { path } = yield* Schema.decodeUnknown(updateLessonNameSchema)(
-      formDataObject
-    );
+    const { path: newPath } = yield* Schema.decodeUnknown(
+      updateLessonNameSchema
+    )(formDataObject);
 
     const db = yield* DBFunctionsService;
+    const repoWrite = yield* RepoWriteService;
 
-    const order = Number(path.split("-")[0]);
+    const order = Number(newPath.split("-")[0]);
 
     if (isNaN(order)) {
       return yield* new InvalidOrderError({
@@ -42,11 +45,29 @@ export const action = async (args: Route.ActionArgs) => {
       });
     }
 
-    // Fetch current lesson to preserve sectionId and order
-    const currentLesson = yield* db.getLessonById(args.params.lessonId);
+    // Fetch current lesson with hierarchy to get repo and section paths
+    const currentLesson = yield* db.getLessonWithHierarchyById(
+      args.params.lessonId
+    );
+
+    // If the slug has changed, perform git mv on the filesystem
+    const oldParsed = parseLessonPath(currentLesson.path);
+    const newParsed = parseLessonPath(newPath.trim());
+
+    if (oldParsed && newParsed && oldParsed.slug !== newParsed.slug) {
+      const repoPath = currentLesson.section.repoVersion.repo.filePath;
+      const sectionPath = currentLesson.section.path;
+
+      yield* repoWrite.renameLesson({
+        repoPath,
+        sectionPath,
+        oldLessonDirName: currentLesson.path,
+        newSlug: newParsed.slug,
+      });
+    }
 
     yield* db.updateLesson(args.params.lessonId, {
-      path: path.trim(),
+      path: newPath.trim(),
       sectionId: currentLesson.sectionId,
       lessonNumber: order,
     });

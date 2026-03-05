@@ -1,11 +1,20 @@
+import { AddVideoModal } from "@/components/add-video-modal";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
+import { FileSystem } from "@effect/platform";
 import { Console, Effect } from "effect";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  Plus,
   VideoIcon,
   PenIcon,
   SendIcon,
@@ -13,6 +22,7 @@ import {
   NewspaperIcon,
   MailIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { data, Link, Outlet, useLocation, useNavigate } from "react-router";
 import type { Route } from "./+types/videos.$videoId";
 
@@ -20,6 +30,7 @@ export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
+    const fs = yield* FileSystem.FileSystem;
     const video = yield* db.getVideoWithClipsById(videoId);
 
     const nextVideoId = yield* db.getNextVideoId(videoId);
@@ -39,8 +50,14 @@ export const loader = async (args: Route.LoaderArgs) => {
         isStandalone: true,
         nextVideoId,
         previousVideoId,
+        videoCount: 1,
+        hasExplainerFolder: false,
       };
     }
+
+    const hasExplainerFolder = yield* fs.exists(
+      `${lesson.section.repoVersion.repo.filePath}/${lesson.section.path}/${lesson.path}/explainer`
+    );
 
     // Lesson-attached video
     return {
@@ -53,6 +70,8 @@ export const loader = async (args: Route.LoaderArgs) => {
       isStandalone: false,
       nextVideoId,
       previousVideoId,
+      videoCount: lesson.videos.length,
+      hasExplainerFolder,
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -108,10 +127,13 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
     isStandalone,
     nextVideoId,
     previousVideoId,
+    videoCount,
+    hasExplainerFolder,
   } = loaderData;
 
   const navigate = useNavigate();
   const location = useLocation();
+  const [addVideoModalOpen, setAddVideoModalOpen] = useState(false);
 
   // Determine active tab from current path
   const activeTab: Tab = location.pathname.endsWith("/write")
@@ -204,19 +226,33 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
               </Button>
             ) : null}
             {nextVideoId ? (
-              <Button variant="ghost" size="sm" asChild>
-                <Link
-                  to={`/videos/${nextVideoId}/${activeTab}`}
-                  onClick={(e) => e.preventDefault()}
-                  onMouseDown={(e) => {
-                    if (e.button === 0)
-                      navigate(`/videos/${nextVideoId}/${activeTab}`);
-                  }}
-                >
-                  Next
-                  <ChevronRightIcon className="size-4 ml-1" />
-                </Link>
-              </Button>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link
+                      to={`/videos/${nextVideoId}/${activeTab}`}
+                      onClick={(e) => e.preventDefault()}
+                      onMouseDown={(e) => {
+                        if (e.button === 0)
+                          navigate(`/videos/${nextVideoId}/${activeTab}`);
+                      }}
+                    >
+                      Next
+                      <ChevronRightIcon className="size-4 ml-1" />
+                    </Link>
+                  </Button>
+                </ContextMenuTrigger>
+                {lessonId && (
+                  <ContextMenuContent>
+                    <ContextMenuItem
+                      onSelect={() => setAddVideoModalOpen(true)}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add New Video
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                )}
+              </ContextMenu>
             ) : null}
           </div>
         </div>
@@ -247,6 +283,14 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
       <div className="flex-1 overflow-y-auto">
         <Outlet />
       </div>
+
+      <AddVideoModal
+        lessonId={lessonId ?? undefined}
+        videoCount={videoCount}
+        hasExplainerFolder={hasExplainerFolder}
+        open={addVideoModalOpen}
+        onOpenChange={setAddVideoModalOpen}
+      />
     </div>
   );
 }

@@ -45,6 +45,22 @@ import { FeatureFlagService } from "@/services/feature-flag-service";
 import { runtimeLive } from "@/services/layer.server";
 import { formatSecondsToTimeCode } from "@/services/utils";
 import { FileSystem } from "@effect/platform";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Console, Effect } from "effect";
 import {
   Archive,
@@ -59,6 +75,7 @@ import {
   FileX,
   FolderOpen,
   FolderPen,
+  GripVertical,
   LayoutGrid,
   Loader2,
   PencilIcon,
@@ -68,7 +85,7 @@ import {
   Trash2,
   VideoIcon,
 } from "lucide-react";
-import React, { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import {
   data,
   Link,
@@ -287,6 +304,37 @@ export default function Component(props: Route.ComponentProps) {
   const deleteLessonFetcher = useFetcher();
   const revealVideoFetcher = useFetcher();
   const archiveRepoFetcher = useFetcher();
+  const reorderLessonFetcher = useFetcher();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleLessonDragEnd = useCallback(
+    (sectionId: string, lessons: { id: string }[]) => (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const fromIndex = lessons.findIndex((l) => l.id === active.id);
+      const toIndex = lessons.findIndex((l) => l.id === over.id);
+      if (fromIndex === -1 || toIndex === -1) return;
+
+      reorderLessonFetcher.submit(
+        {
+          sectionId,
+          fromIndex: fromIndex.toString(),
+          toIndex: toIndex.toString(),
+        },
+        { method: "post", action: "/api/lessons/reorder" }
+      );
+    },
+    [reorderLessonFetcher]
+  );
 
   const data = props.loaderData;
 
@@ -707,219 +755,42 @@ export default function Component(props: Route.ComponentProps) {
                         }}
                       />
                       <div className="p-2">
-                        {section.lessons.map((lesson, li) => (
-                          <React.Fragment key={lesson.id}>
-                            <a id={lesson.id} />
-                            {li > 0 && <Separator className="my-1" />}
-                            <div className="rounded-md px-2 py-2">
-                              <ContextMenu>
-                                <ContextMenuTrigger asChild>
-                                  <div className="flex items-center gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
-                                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-sm font-medium truncate">
-                                      {lesson.path}
-                                    </span>
-                                  </div>
-                                </ContextMenuTrigger>
-                                <ContextMenuContent>
-                                  <ContextMenuItem
-                                    onSelect={() =>
-                                      setAddVideoToLessonId(lesson.id)
-                                    }
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                    Add Video
-                                  </ContextMenuItem>
-                                  <ContextMenuItem
-                                    onSelect={() => setEditLessonId(lesson.id)}
-                                  >
-                                    <PencilIcon className="w-4 h-4" />
-                                    Rename Lesson
-                                  </ContextMenuItem>
-                                  <ContextMenuItem
-                                    variant="destructive"
-                                    onSelect={() => {
-                                      deleteLessonFetcher.submit(
-                                        { lessonId: lesson.id },
-                                        {
-                                          method: "post",
-                                          action: "/api/lessons/delete",
-                                        }
-                                      );
-                                    }}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete
-                                  </ContextMenuItem>
-                                </ContextMenuContent>
-                              </ContextMenu>
-                              <AddVideoModal
-                                lessonId={lesson.id}
-                                videoCount={lesson.videos.length}
-                                hasExplainerFolder={
-                                  data.hasExplainerFolderMap[lesson.id] ?? false
-                                }
-                                open={addVideoToLessonId === lesson.id}
-                                onOpenChange={(open) => {
-                                  setAddVideoToLessonId(
-                                    open ? lesson.id : null
-                                  );
-                                }}
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleLessonDragEnd(
+                            section.id,
+                            section.lessons
+                          )}
+                        >
+                          <SortableContext
+                            items={section.lessons.map((l) => l.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {section.lessons.map((lesson, li) => (
+                              <SortableLessonItem
+                                key={lesson.id}
+                                lesson={lesson}
+                                lessonIndex={li}
+                                section={section}
+                                data={data}
+                                navigate={navigate}
+                                setAddVideoToLessonId={setAddVideoToLessonId}
+                                addVideoToLessonId={addVideoToLessonId}
+                                setEditLessonId={setEditLessonId}
+                                editLessonId={editLessonId}
+                                setVideoPlayerState={setVideoPlayerState}
+                                startExportUpload={startExportUpload}
+                                revealVideoFetcher={revealVideoFetcher}
+                                setRenameVideoState={setRenameVideoState}
+                                setMoveVideoState={setMoveVideoState}
+                                deleteVideoFileFetcher={deleteVideoFileFetcher}
+                                deleteVideoFetcher={deleteVideoFetcher}
+                                deleteLessonFetcher={deleteLessonFetcher}
                               />
-                              <EditLessonModal
-                                lessonId={lesson.id}
-                                currentPath={lesson.path}
-                                open={editLessonId === lesson.id}
-                                onOpenChange={(open) => {
-                                  setEditLessonId(open ? lesson.id : null);
-                                }}
-                              />
-                              <div className="ml-5 space-y-0.5">
-                                {lesson.videos.map((video) => {
-                                  const totalDuration = video.clips.reduce(
-                                    (acc, clip) => {
-                                      return (
-                                        acc +
-                                        (clip.sourceEndTime -
-                                          clip.sourceStartTime)
-                                      );
-                                    },
-                                    0
-                                  );
-
-                                  return (
-                                    <ContextMenu key={video.id}>
-                                      <ContextMenuTrigger asChild>
-                                        <button
-                                          className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50 transition-colors cursor-context-menu w-full text-left"
-                                          onMouseDown={(e) => {
-                                            if (!isLeftClick(e)) return;
-                                            navigate(
-                                              `/videos/${video.id}/edit`
-                                            );
-                                          }}
-                                        >
-                                          <div className="flex items-center gap-1.5 min-w-0">
-                                            <FileVideo
-                                              className={cn(
-                                                "w-3 h-3 shrink-0",
-                                                data.hasExportedVideoMap[
-                                                  video.id
-                                                ]
-                                                  ? "text-muted-foreground"
-                                                  : "text-red-500"
-                                              )}
-                                            />
-                                            <span className="truncate text-muted-foreground">
-                                              {video.path}
-                                            </span>
-                                          </div>
-                                          <span className="text-muted-foreground font-mono ml-2 shrink-0">
-                                            {formatSecondsToTimeCode(
-                                              totalDuration
-                                            )}
-                                          </span>
-                                        </button>
-                                      </ContextMenuTrigger>
-                                      <ContextMenuContent>
-                                        <ContextMenuItem
-                                          onSelect={() => {
-                                            setVideoPlayerState({
-                                              isOpen: true,
-                                              videoId: video.id,
-                                              videoPath: `${section.path}/${lesson.path}/${video.path}`,
-                                            });
-                                          }}
-                                        >
-                                          <Play className="w-4 h-4" />
-                                          Play Video
-                                        </ContextMenuItem>
-                                        <ContextMenuItem
-                                          onSelect={() => {
-                                            startExportUpload(
-                                              video.id,
-                                              `${section.path}/${lesson.path}/${video.path}`
-                                            );
-                                          }}
-                                        >
-                                          <Download className="w-4 h-4" />
-                                          Export
-                                        </ContextMenuItem>
-                                        <ContextMenuItem
-                                          onSelect={() => {
-                                            revealVideoFetcher.submit(
-                                              {},
-                                              {
-                                                method: "post",
-                                                action: `/api/videos/${video.id}/reveal`,
-                                              }
-                                            );
-                                          }}
-                                        >
-                                          <FolderOpen className="w-4 h-4" />
-                                          Reveal in File System
-                                        </ContextMenuItem>
-                                        <ContextMenuItem
-                                          onSelect={() => {
-                                            setRenameVideoState({
-                                              videoId: video.id,
-                                              videoPath: video.path,
-                                            });
-                                          }}
-                                        >
-                                          <PencilIcon className="w-4 h-4" />
-                                          Rename
-                                        </ContextMenuItem>
-                                        <ContextMenuItem
-                                          onSelect={() => {
-                                            setMoveVideoState({
-                                              videoId: video.id,
-                                              videoPath: video.path,
-                                              currentLessonId: lesson.id,
-                                            });
-                                          }}
-                                        >
-                                          <ArrowRightLeft className="w-4 h-4" />
-                                          Move to Lesson
-                                        </ContextMenuItem>
-                                        <ContextMenuItem
-                                          variant="destructive"
-                                          onSelect={() => {
-                                            deleteVideoFileFetcher.submit(
-                                              {},
-                                              {
-                                                method: "post",
-                                                action: `/api/videos/${video.id}/delete-file`,
-                                              }
-                                            );
-                                          }}
-                                        >
-                                          <FileX className="w-4 h-4" />
-                                          Delete from File System
-                                        </ContextMenuItem>
-                                        <ContextMenuItem
-                                          variant="destructive"
-                                          onSelect={() => {
-                                            deleteVideoFetcher.submit(
-                                              { videoId: video.id },
-                                              {
-                                                method: "post",
-                                                action: "/api/videos/delete",
-                                              }
-                                            );
-                                          }}
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                          Delete
-                                        </ContextMenuItem>
-                                      </ContextMenuContent>
-                                    </ContextMenu>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </React.Fragment>
-                        ))}
+                            ))}
+                          </SortableContext>
+                        </DndContext>
                       </div>
                     </div>
                   );
@@ -1130,6 +1001,273 @@ export default function Component(props: Route.ComponentProps) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+type LoaderData = Route.ComponentProps["loaderData"];
+type Section = NonNullable<LoaderData["selectedRepo"]>["sections"][number];
+type Lesson = Section["lessons"][number];
+
+function SortableLessonItem({
+  lesson,
+  lessonIndex,
+  section,
+  data,
+  navigate,
+  setAddVideoToLessonId,
+  addVideoToLessonId,
+  setEditLessonId,
+  editLessonId,
+  setVideoPlayerState,
+  startExportUpload,
+  revealVideoFetcher,
+  setRenameVideoState,
+  setMoveVideoState,
+  deleteVideoFileFetcher,
+  deleteVideoFetcher,
+  deleteLessonFetcher,
+}: {
+  lesson: Lesson;
+  lessonIndex: number;
+  section: Section;
+  data: LoaderData;
+  navigate: ReturnType<typeof useNavigate>;
+  setAddVideoToLessonId: (id: string | null) => void;
+  addVideoToLessonId: string | null;
+  setEditLessonId: (id: string | null) => void;
+  editLessonId: string | null;
+  setVideoPlayerState: (state: {
+    isOpen: boolean;
+    videoId: string;
+    videoPath: string;
+  }) => void;
+  startExportUpload: (videoId: string, path: string) => void;
+  revealVideoFetcher: ReturnType<typeof useFetcher>;
+  setRenameVideoState: (
+    state: { videoId: string; videoPath: string } | null
+  ) => void;
+  setMoveVideoState: (
+    state: {
+      videoId: string;
+      videoPath: string;
+      currentLessonId: string;
+    } | null
+  ) => void;
+  deleteVideoFileFetcher: ReturnType<typeof useFetcher>;
+  deleteVideoFetcher: ReturnType<typeof useFetcher>;
+  deleteLessonFetcher: ReturnType<typeof useFetcher>;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lesson.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <a id={lesson.id} />
+      {lessonIndex > 0 && <Separator className="my-1" />}
+      <div className="rounded-md px-2 py-2">
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div className="flex items-center gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
+              <button
+                className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 touch-none"
+                {...attributes}
+                {...listeners}
+              >
+                <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+              <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium truncate">
+                {lesson.path}
+              </span>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onSelect={() => setAddVideoToLessonId(lesson.id)}>
+              <Plus className="w-4 h-4" />
+              Add Video
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => setEditLessonId(lesson.id)}>
+              <PencilIcon className="w-4 h-4" />
+              Rename Lesson
+            </ContextMenuItem>
+            <ContextMenuItem
+              variant="destructive"
+              onSelect={() => {
+                deleteLessonFetcher.submit(
+                  { lessonId: lesson.id },
+                  {
+                    method: "post",
+                    action: "/api/lessons/delete",
+                  }
+                );
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+        <AddVideoModal
+          lessonId={lesson.id}
+          videoCount={lesson.videos.length}
+          hasExplainerFolder={data.hasExplainerFolderMap[lesson.id] ?? false}
+          open={addVideoToLessonId === lesson.id}
+          onOpenChange={(open) => {
+            setAddVideoToLessonId(open ? lesson.id : null);
+          }}
+        />
+        <EditLessonModal
+          lessonId={lesson.id}
+          currentPath={lesson.path}
+          open={editLessonId === lesson.id}
+          onOpenChange={(open) => {
+            setEditLessonId(open ? lesson.id : null);
+          }}
+        />
+        <div className="ml-5 space-y-0.5">
+          {lesson.videos.map((video) => {
+            const totalDuration = video.clips.reduce((acc, clip) => {
+              return acc + (clip.sourceEndTime - clip.sourceStartTime);
+            }, 0);
+
+            return (
+              <ContextMenu key={video.id}>
+                <ContextMenuTrigger asChild>
+                  <button
+                    className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50 transition-colors cursor-context-menu w-full text-left"
+                    onMouseDown={(e) => {
+                      if (!isLeftClick(e)) return;
+                      navigate(`/videos/${video.id}/edit`);
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <FileVideo
+                        className={cn(
+                          "w-3 h-3 shrink-0",
+                          data.hasExportedVideoMap[video.id]
+                            ? "text-muted-foreground"
+                            : "text-red-500"
+                        )}
+                      />
+                      <span className="truncate text-muted-foreground">
+                        {video.path}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground font-mono ml-2 shrink-0">
+                      {formatSecondsToTimeCode(totalDuration)}
+                    </span>
+                  </button>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      setVideoPlayerState({
+                        isOpen: true,
+                        videoId: video.id,
+                        videoPath: `${section.path}/${lesson.path}/${video.path}`,
+                      });
+                    }}
+                  >
+                    <Play className="w-4 h-4" />
+                    Play Video
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      startExportUpload(
+                        video.id,
+                        `${section.path}/${lesson.path}/${video.path}`
+                      );
+                    }}
+                  >
+                    <Download className="w-4 h-4" />
+                    Export
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      revealVideoFetcher.submit(
+                        {},
+                        {
+                          method: "post",
+                          action: `/api/videos/${video.id}/reveal`,
+                        }
+                      );
+                    }}
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    Reveal in File System
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      setRenameVideoState({
+                        videoId: video.id,
+                        videoPath: video.path,
+                      });
+                    }}
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    Rename
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      setMoveVideoState({
+                        videoId: video.id,
+                        videoPath: video.path,
+                        currentLessonId: lesson.id,
+                      });
+                    }}
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    Move to Lesson
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    variant="destructive"
+                    onSelect={() => {
+                      deleteVideoFileFetcher.submit(
+                        {},
+                        {
+                          method: "post",
+                          action: `/api/videos/${video.id}/delete-file`,
+                        }
+                      );
+                    }}
+                  >
+                    <FileX className="w-4 h-4" />
+                    Delete from File System
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    variant="destructive"
+                    onSelect={() => {
+                      deleteVideoFetcher.submit(
+                        { videoId: video.id },
+                        {
+                          method: "post",
+                          action: "/api/videos/delete",
+                        }
+                      );
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

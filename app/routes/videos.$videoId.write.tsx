@@ -795,6 +795,7 @@ export function InnerComponent(props: Route.ComponentProps) {
             includeCourseStructure && courseStructure
               ? courseStructure
               : undefined,
+          memory: memoryEnabled && memory ? memory : undefined,
         },
       }
     );

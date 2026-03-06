@@ -57,6 +57,7 @@ const chatSchema = Schema.Struct({
   }),
   courseStructure: Schema.optional(courseStructureSchema),
   aiHeroUrl: Schema.optional(Schema.String),
+  memory: Schema.optional(Schema.String),
 });
 
 export const action = async (args: Route.ActionArgs) => {
@@ -120,6 +121,7 @@ export const action = async (args: Route.ActionArgs) => {
       links,
       courseStructure: courseStructureText,
       aiHeroUrl: parsed.aiHeroUrl,
+      memory: parsed.memory,
     });
 
     const result = agent.stream({

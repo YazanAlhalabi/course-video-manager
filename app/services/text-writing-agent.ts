@@ -54,6 +54,7 @@ export const createTextWritingAgent = (props: {
   links?: GlobalLink[];
   courseStructure?: string;
   aiHeroUrl?: string;
+  memory?: string;
 }) => {
   const links = props.links ?? [];
   const systemPrompt = (() => {
@@ -193,9 +194,13 @@ export const createTextWritingAgent = (props: {
     }
   })();
 
+  const memorySection = props.memory
+    ? `\n\n## Course Memory\n\nThe following is course-level context provided by the author. Use it to inform your response:\n\n<memory>\n${props.memory}\n</memory>`
+    : "";
+
   return new Agent({
     model: props.model,
-    system: systemPrompt,
+    system: systemPrompt + memorySection,
   });
 };
 

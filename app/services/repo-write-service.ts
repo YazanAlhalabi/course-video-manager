@@ -238,11 +238,53 @@ export class RepoWriteService extends Effect.Service<RepoWriteService>()(
         }
       });
 
+      /**
+       * Deletes a lesson directory from the filesystem.
+       * Uses `git rm -rf` for tracked files; falls back to recursive
+       * removal for untracked directories (e.g. newly added, never committed).
+       */
+      const deleteLesson = Effect.fn("deleteLesson")(function* (opts: {
+        repoPath: string;
+        sectionPath: string;
+        lessonDirName: string;
+      }) {
+        const fullPath = path.join(
+          opts.repoPath,
+          opts.sectionPath,
+          opts.lessonDirName
+        );
+
+        // Check if the directory exists at all
+        const exists = yield* fs.exists(fullPath);
+        if (!exists) return;
+
+        // Try git rm -rf first (works for tracked files, stages the deletion)
+        const gitRmSucceeded = yield* Effect.try({
+          try: () => {
+            execFileSync("git", ["rm", "-rf", fullPath], {
+              cwd: opts.repoPath,
+            });
+            return true;
+          },
+          catch: () =>
+            new RepoWriteError({
+              cause: null,
+              message: "git rm failed",
+            }),
+        }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+
+        if (gitRmSucceeded) return;
+
+        // Fallback: plain recursive removal for untracked directories
+        yield* fs.remove(fullPath, { recursive: true });
+      });
+
       return {
         createLessonDirectory,
         addLesson,
         renameLesson,
         renameLessons,
+        deleteLesson,
       };
     }),
     dependencies: [NodeFileSystem.layer],

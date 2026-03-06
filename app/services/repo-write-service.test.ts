@@ -441,6 +441,115 @@ describe("RepoWriteService", () => {
     });
   });
 
+  describe("deleteLesson", () => {
+    it("removes an untracked lesson directory from disk", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+
+      // Add a lesson (creates untracked directory)
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.addLesson({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            sectionNumber: 1,
+            slug: "my-lesson",
+          });
+        })
+      );
+
+      expect(fs.existsSync(path.join(sectionDir, "01.01-my-lesson"))).toBe(
+        true
+      );
+
+      // Delete it
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.deleteLesson({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            lessonDirName: "01.01-my-lesson",
+          });
+        })
+      );
+
+      expect(fs.existsSync(path.join(sectionDir, "01.01-my-lesson"))).toBe(
+        false
+      );
+    });
+
+    it("removes a committed lesson directory and stages deletion in git", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      const lessonDir = path.join(sectionDir, "01.01-committed", "explainer");
+      fs.mkdirSync(lessonDir, { recursive: true });
+      fs.writeFileSync(path.join(lessonDir, "readme.md"), "# Committed\n");
+      execSync("git add . && git commit -m 'add lesson'", { cwd: tempDir });
+
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.deleteLesson({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            lessonDirName: "01.01-committed",
+          });
+        })
+      );
+
+      expect(fs.existsSync(path.join(sectionDir, "01.01-committed"))).toBe(
+        false
+      );
+
+      // Deletion should be staged in git
+      const status = execSync("git status --porcelain", { cwd: tempDir })
+        .toString()
+        .trim();
+      expect(status).toContain("D");
+      expect(status).toContain("01.01-committed");
+    });
+
+    it("removes a lesson with unstaged changes", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      const lessonDir = path.join(sectionDir, "01.01-modified", "explainer");
+      fs.mkdirSync(lessonDir, { recursive: true });
+      fs.writeFileSync(path.join(lessonDir, "readme.md"), "# Original\n");
+      execSync("git add . && git commit -m 'add lesson'", { cwd: tempDir });
+
+      // Modify file (unstaged change)
+      fs.writeFileSync(path.join(lessonDir, "readme.md"), "# Modified\n");
+
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.deleteLesson({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            lessonDirName: "01.01-modified",
+          });
+        })
+      );
+
+      expect(fs.existsSync(path.join(sectionDir, "01.01-modified"))).toBe(
+        false
+      );
+    });
+
+    it("is a no-op when lesson directory does not exist", async () => {
+      // Should not throw
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.deleteLesson({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            lessonDirName: "01.99-nonexistent",
+          });
+        })
+      );
+    });
+  });
+
   describe("renameLesson", () => {
     const createAndCommitLesson = (
       sectionDir: string,

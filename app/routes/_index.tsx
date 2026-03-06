@@ -76,6 +76,7 @@ import {
   FileX,
   FolderOpen,
   FolderPen,
+  Ghost,
   GripVertical,
   Loader2,
   PencilIcon,
@@ -200,10 +201,12 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const lessons =
       selectedRepo?.sections.flatMap((section) =>
-        section.lessons.map((lesson) => ({
-          id: lesson.id,
-          fullPath: `${selectedRepo.filePath}/${section.path}/${lesson.path}`,
-        }))
+        section.lessons
+          .filter((lesson) => lesson.fsStatus !== "ghost")
+          .map((lesson) => ({
+            id: lesson.id,
+            fullPath: `${selectedRepo.filePath}/${section.path}/${lesson.path}`,
+          }))
       ) ?? [];
 
     yield* Effect.forEach(lessons, (lesson) => {
@@ -757,15 +760,37 @@ export default function Component(props: Route.ComponentProps) {
                     );
                   }, 0);
 
+                  const isGhostSection =
+                    lessons.length === 0 ||
+                    lessons.every((l) => l.fsStatus === "ghost");
+
                   return (
-                    <div key={section.id} className="rounded-lg border bg-card">
+                    <div
+                      key={section.id}
+                      className={cn(
+                        "rounded-lg border bg-card",
+                        isGhostSection &&
+                          "border-dashed border-muted-foreground/30 bg-muted/10"
+                      )}
+                    >
                       <ContextMenu>
                         <ContextMenuTrigger asChild>
                           <div className="px-4 py-3 border-b bg-muted/30 cursor-context-menu">
                             <div className="flex items-center justify-between">
-                              <h2 className="font-medium text-sm">
-                                {section.path}
-                              </h2>
+                              <div className="flex items-center gap-2">
+                                <h2
+                                  className={cn(
+                                    "font-medium text-sm",
+                                    isGhostSection &&
+                                      "text-muted-foreground/70 italic"
+                                  )}
+                                >
+                                  {section.path}
+                                </h2>
+                                {isGhostSection && (
+                                  <Ghost className="w-3.5 h-3.5 text-muted-foreground/40" />
+                                )}
+                              </div>
                               <Badge
                                 variant="secondary"
                                 className="text-[10px]"
@@ -1108,11 +1133,19 @@ function SortableLessonItem({
     opacity: isDragging ? 0.5 : undefined,
   };
 
+  const isGhost = lesson.fsStatus === "ghost";
+
   return (
     <div ref={setNodeRef} style={style}>
       <a id={lesson.id} />
       {lessonIndex > 0 && <Separator className="my-1" />}
-      <div className="rounded-md px-2 py-2">
+      <div
+        className={cn(
+          "rounded-md px-2 py-2",
+          isGhost &&
+            "border border-dashed border-muted-foreground/30 bg-muted/20"
+        )}
+      >
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div className="flex items-center gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
@@ -1123,10 +1156,38 @@ function SortableLessonItem({
               >
                 <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-              <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-sm font-medium truncate">
-                {lesson.path}
+              <BookOpen
+                className={cn(
+                  "w-3.5 h-3.5 text-muted-foreground shrink-0",
+                  isGhost && "opacity-50"
+                )}
+              />
+              <span
+                className={cn(
+                  "text-sm font-medium truncate",
+                  isGhost && "text-muted-foreground/70 italic"
+                )}
+              >
+                {lesson.title || lesson.path}
               </span>
+              {isGhost && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground/60 px-1.5 py-0.5 rounded-sm bg-muted/50 shrink-0">
+                  <Ghost className="w-3 h-3" />
+                  Ghost
+                </span>
+              )}
+              {lesson.priority !== undefined && lesson.priority !== 2 && (
+                <span
+                  className={cn(
+                    "flex-shrink-0 text-xs px-2 py-0.5 rounded-sm font-medium",
+                    lesson.priority === 1
+                      ? "bg-red-500/20 text-red-600"
+                      : "bg-sky-500/20 text-sky-500"
+                  )}
+                >
+                  P{lesson.priority}
+                </span>
+              )}
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent>

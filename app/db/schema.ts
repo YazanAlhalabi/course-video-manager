@@ -100,6 +100,12 @@ export const lessons = createTable("lesson", {
     length: 255,
   }),
   path: text("path").notNull(),
+  title: text("title").notNull().default(""),
+  fsStatus: text("fs_status").notNull().default("real"),
+  description: text("description").notNull().default(""),
+  icon: varchar("icon", { length: 255 }),
+  priority: integer("priority").notNull().default(2),
+  dependencies: text("dependencies").array(),
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,

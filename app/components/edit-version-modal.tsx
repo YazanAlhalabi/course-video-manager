@@ -7,13 +7,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { useFetcher } from "react-router";
 
-export function RenameVersionModal(props: {
+export function EditVersionModal(props: {
   repoId: string;
   versionId: string;
   currentName: string;
+  currentDescription: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -23,7 +25,7 @@ export function RenameVersionModal(props: {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rename Version</DialogTitle>
+          <DialogTitle>Edit Version</DialogTitle>
         </DialogHeader>
         <fetcher.Form
           method="post"
@@ -43,6 +45,16 @@ export function RenameVersionModal(props: {
               name="name"
               defaultValue={props.currentName}
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="version-description">Description</Label>
+            <Textarea
+              id="version-description"
+              name="description"
+              defaultValue={props.currentDescription}
+              placeholder="What changed in this version..."
+              rows={3}
             />
           </div>
           <div className="flex justify-end space-x-2">

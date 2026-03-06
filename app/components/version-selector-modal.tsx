@@ -11,6 +11,7 @@ import { Check } from "lucide-react";
 interface Version {
   id: string;
   name: string;
+  description: string;
   createdAt: Date;
 }
 
@@ -43,7 +44,7 @@ export function VersionSelectorModal({
                 key={version.id}
                 variant="ghost"
                 className={cn(
-                  "w-full justify-between",
+                  "w-full justify-between h-auto py-2",
                   isSelected && "bg-accent"
                 )}
                 onClick={() => {
@@ -51,13 +52,20 @@ export function VersionSelectorModal({
                   onOpenChange(false);
                 }}
               >
-                <span>
-                  {version.name}{" "}
-                  <span className="text-muted-foreground">
-                    ({new Date(version.createdAt).toLocaleDateString()})
+                <div className="flex flex-col items-start text-left">
+                  <span>
+                    {version.name}{" "}
+                    <span className="text-muted-foreground">
+                      ({new Date(version.createdAt).toLocaleDateString()})
+                    </span>
                   </span>
-                </span>
-                {isSelected && <Check className="w-4 h-4" />}
+                  {version.description && (
+                    <span className="text-xs text-muted-foreground">
+                      {version.description}
+                    </span>
+                  )}
+                </div>
+                {isSelected && <Check className="w-4 h-4 shrink-0" />}
               </Button>
             );
           })}

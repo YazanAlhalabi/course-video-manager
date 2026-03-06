@@ -1,6 +1,7 @@
 type VersionWithStructure = {
   id: string;
   name: string;
+  description: string;
   createdAt: Date;
   sections: Array<{
     id: string;
@@ -356,6 +357,11 @@ export function generateChangelog(versions: VersionWithStructure[]): string {
 
     lines.push(`## ${currentVersion.name}`);
     lines.push("");
+
+    if (currentVersion.description) {
+      lines.push(currentVersion.description);
+      lines.push("");
+    }
 
     // First/oldest version
     if (!previousVersion) {

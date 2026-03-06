@@ -1607,27 +1607,29 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
 
           return version;
         }),
-        updateRepoVersionName: Effect.fn("updateRepoVersionName")(
-          function* (opts: { versionId: string; name: string }) {
-            const { versionId, name } = opts;
-            const [updated] = yield* makeDbCall(() =>
-              db
-                .update(repoVersions)
-                .set({ name })
-                .where(eq(repoVersions.id, versionId))
-                .returning()
-            );
+        updateRepoVersion: Effect.fn("updateRepoVersion")(function* (opts: {
+          versionId: string;
+          name: string;
+          description: string;
+        }) {
+          const { versionId, name, description } = opts;
+          const [updated] = yield* makeDbCall(() =>
+            db
+              .update(repoVersions)
+              .set({ name, description })
+              .where(eq(repoVersions.id, versionId))
+              .returning()
+          );
 
-            if (!updated) {
-              return yield* new NotFoundError({
-                type: "updateRepoVersionName",
-                params: { versionId },
-              });
-            }
-
-            return updated;
+          if (!updated) {
+            return yield* new NotFoundError({
+              type: "updateRepoVersion",
+              params: { versionId },
+            });
           }
-        ),
+
+          return updated;
+        }),
         updateRepoName: Effect.fn("updateRepoName")(function* (opts: {
           repoId: string;
           name: string;
@@ -2029,6 +2031,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
             const versionsWithStructure: Array<{
               id: string;
               name: string;
+              description: string;
               createdAt: Date;
               sections: Array<{
                 id: string;
@@ -2077,6 +2080,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
               versionsWithStructure.push({
                 id: version.id,
                 name: version.name,
+                description: version.description,
                 createdAt: version.createdAt,
                 sections: versionSections.map((s) => ({
                   id: s.id,

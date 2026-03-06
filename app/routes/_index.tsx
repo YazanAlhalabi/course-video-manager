@@ -11,7 +11,7 @@ import { MoveVideoModal } from "@/components/move-video-modal";
 import { RenameVideoModal } from "@/components/rename-video-modal";
 import { RenameRepoModal } from "@/components/rename-repo-modal";
 import { RewriteRepoPathModal } from "@/components/rewrite-repo-path-modal";
-import { RenameVersionModal } from "@/components/rename-version-modal";
+import { EditVersionModal } from "@/components/edit-version-modal";
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -272,8 +272,7 @@ export default function Component(props: Route.ComponentProps) {
     useState(false);
   const [isVersionSelectorModalOpen, setIsVersionSelectorModalOpen] =
     useState(false);
-  const [isRenameVersionModalOpen, setIsRenameVersionModalOpen] =
-    useState(false);
+  const [isEditVersionModalOpen, setIsEditVersionModalOpen] = useState(false);
   const [isRenameRepoModalOpen, setIsRenameRepoModalOpen] = useState(false);
   const [isDeleteVersionModalOpen, setIsDeleteVersionModalOpen] =
     useState(false);
@@ -567,15 +566,15 @@ export default function Component(props: Route.ComponentProps) {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              onSelect={() => setIsRenameVersionModalOpen(true)}
+                              onSelect={() => setIsEditVersionModalOpen(true)}
                             >
                               <PencilIcon className="w-4 h-4 mr-2" />
                               <div className="flex flex-col">
                                 <span className="font-medium">
-                                  Rename Version
+                                  Edit Version
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  Change version name
+                                  Change version name and description
                                 </span>
                               </div>
                             </DropdownMenuItem>
@@ -917,12 +916,13 @@ export default function Component(props: Route.ComponentProps) {
       )}
 
       {currentRepo && data.selectedVersion && (
-        <RenameVersionModal
+        <EditVersionModal
           repoId={currentRepo.id}
           versionId={data.selectedVersion.id}
           currentName={data.selectedVersion.name}
-          open={isRenameVersionModalOpen}
-          onOpenChange={setIsRenameVersionModalOpen}
+          currentDescription={data.selectedVersion.description}
+          open={isEditVersionModalOpen}
+          onOpenChange={setIsEditVersionModalOpen}
         />
       )}
 

@@ -5,11 +5,12 @@ import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
 import { data } from "react-router";
 
-const renameVersionSchema = Schema.Struct({
+const editVersionSchema = Schema.Struct({
   versionId: Schema.String.pipe(Schema.minLength(1)),
   name: Schema.String.pipe(
     Schema.minLength(1, { message: () => "Version name cannot be empty" })
   ),
+  description: Schema.optionalWith(Schema.String, { default: () => "" }),
 });
 
 export const action = async (args: Route.ActionArgs) => {
@@ -17,12 +18,16 @@ export const action = async (args: Route.ActionArgs) => {
   const formDataObject = Object.fromEntries(formData);
 
   return Effect.gen(function* () {
-    const { versionId, name } =
-      yield* Schema.decodeUnknown(renameVersionSchema)(formDataObject);
+    const { versionId, name, description } =
+      yield* Schema.decodeUnknown(editVersionSchema)(formDataObject);
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateRepoVersionName({ versionId, name: name.trim() });
+    yield* db.updateRepoVersion({
+      versionId,
+      name: name.trim(),
+      description: description.trim(),
+    });
 
     return { success: true };
   }).pipe(

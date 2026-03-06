@@ -57,6 +57,7 @@ export const repoVersions = createTable("repo_version", {
     .references(() => repos.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull(),
+  description: text("description").notNull().default(""),
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,

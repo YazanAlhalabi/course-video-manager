@@ -1574,11 +1574,14 @@ function SortableLessonItem({
   const iconFetcher = useFetcher();
   const priorityFetcher = useFetcher();
 
-  const currentIcon = (lesson.icon ?? "watch") as
-    | "watch"
-    | "code"
-    | "discussion";
-  const currentPriority = (lesson.priority ?? 2) as 1 | 2 | 3;
+  const currentIcon = ((iconFetcher.formData?.get("icon") as string) ??
+    lesson.icon ??
+    "watch") as "watch" | "code" | "discussion";
+  const currentPriority = (
+    priorityFetcher.formData
+      ? Number(priorityFetcher.formData.get("priority"))
+      : (lesson.priority ?? 2)
+  ) as 1 | 2 | 3;
 
   const handleIconCycle = useCallback(() => {
     const nextIcon =

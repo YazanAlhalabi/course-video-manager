@@ -440,7 +440,7 @@ function SortableLesson({
                       lesson.priority === 1
                         ? "bg-red-500/20 text-red-600"
                         : lesson.priority === 3
-                          ? "bg-gray-500/20 text-gray-500"
+                          ? "bg-sky-500/20 text-sky-500"
                           : "bg-yellow-500/20 text-yellow-600"
                     }`}
                     onClick={() =>
@@ -751,7 +751,7 @@ function SortableSection({
                       </span>
                     )}
                     {priorityCounts[3] > 0 && (
-                      <span className="inline-flex items-center rounded-md bg-gray-500/20 text-gray-500 px-2 py-0.5 text-xs font-medium">
+                      <span className="inline-flex items-center rounded-md bg-sky-500/20 text-sky-500 px-2 py-0.5 text-xs font-medium">
                         {priorityCounts[3]} P3
                       </span>
                     )}
@@ -1308,7 +1308,7 @@ function PlanDetailPageContent({ loaderData }: Route.ComponentProps) {
                           ? "bg-red-500/20 text-red-600"
                           : priority === 2
                             ? "bg-yellow-500/20 text-yellow-600"
-                            : "bg-gray-500/20 text-gray-500"
+                            : "bg-sky-500/20 text-sky-500"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     } ${isSelected ? "ring-1 ring-current" : ""}`}
                     onClick={() =>

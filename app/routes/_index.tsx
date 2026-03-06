@@ -1607,8 +1607,12 @@ function SortableLessonItem({
     );
   }, [currentPriority, lesson.id, priorityFetcher]);
 
-  // Dependency violation checking
-  const lessonDeps = lesson.dependencies ?? [];
+  // Dependency violation checking (optimistic: read pending fetcher data first)
+  const lessonDeps = dependencyFetcher.formData
+    ? (JSON.parse(
+        dependencyFetcher.formData.get("dependencies") as string
+      ) as string[])
+    : (lesson.dependencies ?? []);
   const flatLessonIdx = allFlatLessons.findIndex((l) => l.id === lesson.id);
   const orderViolations = lessonDeps
     .map((depId) => {

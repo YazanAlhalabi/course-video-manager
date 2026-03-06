@@ -117,6 +117,7 @@ import {
 } from "react-router";
 import type { Route } from "./+types/_index";
 import { toast } from "sonner";
+import { findNewOrderViolations } from "@/utils/dependency-violations";
 import { UploadContext } from "@/features/upload-manager/upload-context";
 
 export const meta: Route.MetaFunction = ({ data }) => {
@@ -334,24 +335,44 @@ export default function Component(props: Route.ComponentProps) {
   );
 
   const handleLessonDragEnd = useCallback(
-    (sectionId: string, lessons: { id: string }[]) => (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
+    (
+      sectionId: string,
+      lessons: {
+        id: string;
+        title?: string | null;
+        path: string;
+        dependencies?: string[] | null;
+      }[]
+    ) =>
+      (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
 
-      const fromIndex = lessons.findIndex((l) => l.id === active.id);
-      const toIndex = lessons.findIndex((l) => l.id === over.id);
-      if (fromIndex === -1 || toIndex === -1) return;
+        const fromIndex = lessons.findIndex((l) => l.id === active.id);
+        const toIndex = lessons.findIndex((l) => l.id === over.id);
+        if (fromIndex === -1 || toIndex === -1) return;
 
-      const newOrder = arrayMove(lessons, fromIndex, toIndex);
+        const newOrder = arrayMove(lessons, fromIndex, toIndex);
 
-      reorderLessonFetcher.submit(
-        {
-          sectionId,
-          lessonIds: JSON.stringify(newOrder.map((l) => l.id)),
-        },
-        { method: "post", action: "/api/lessons/reorder" }
-      );
-    },
+        // Check for new dependency violations introduced by this reorder
+        const newViolations = findNewOrderViolations(lessons, newOrder);
+        if (newViolations.length > 0) {
+          const details = newViolations
+            .map((v) => `${v.lessonLabel} → ${v.depLabel}`)
+            .join(", ");
+          toast.warning("Dependency violation introduced", {
+            description: details,
+          });
+        }
+
+        reorderLessonFetcher.submit(
+          {
+            sectionId,
+            lessonIds: JSON.stringify(newOrder.map((l) => l.id)),
+          },
+          { method: "post", action: "/api/lessons/reorder" }
+        );
+      },
     [reorderLessonFetcher]
   );
 

@@ -39,12 +39,17 @@ export const action = async (args: Route.ActionArgs) => {
     // Get all lessons for the section, ordered by their current order
     const sectionLessons = yield* db.getLessonsBySectionId(sectionId);
 
-    // Compute the renumbering plan using the full ordered array from the client
-    const lessonsForReorder = sectionLessons.map((l) => ({
+    // Only include real lessons in the renumbering plan — ghost lessons
+    // don't have directories on disk so git mv would fail for them.
+    const realLessons = sectionLessons.filter((l) => l.fsStatus !== "ghost");
+    const realLessonIds = lessonIds.filter((id) =>
+      realLessons.some((l) => l.id === id)
+    );
+    const lessonsForReorder = realLessons.map((l) => ({
       id: l.id,
       path: l.path,
     }));
-    const renames = computeRenumberingPlan(lessonsForReorder, lessonIds);
+    const renames = computeRenumberingPlan(lessonsForReorder, realLessonIds);
 
     if (renames.length > 0) {
       // Execute git mv for all affected directories

@@ -362,7 +362,10 @@ export default function Component(props: Route.ComponentProps) {
 
   const totalLessons =
     data.selectedRepo?.sections.reduce((acc, section) => {
-      return acc + section.lessons.length;
+      return (
+        acc +
+        section.lessons.filter((lesson) => lesson.fsStatus !== "ghost").length
+      );
     }, 0) ?? 0;
 
   const totalVideos =

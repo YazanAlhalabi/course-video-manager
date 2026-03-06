@@ -1978,6 +1978,12 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
                       previousVersionLessonId: sourceLesson.id,
                       path: sourceLesson.path,
                       order: sourceLesson.order,
+                      fsStatus: sourceLesson.fsStatus,
+                      title: sourceLesson.title,
+                      description: sourceLesson.description,
+                      icon: sourceLesson.icon,
+                      priority: sourceLesson.priority,
+                      dependencies: sourceLesson.dependencies,
                     })
                     .returning()
                 );
@@ -2137,19 +2143,21 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
                   id: s.id,
                   path: s.path,
                   previousVersionSectionId: s.previousVersionSectionId,
-                  lessons: s.lessons.map((l) => ({
-                    id: l.id,
-                    path: l.path,
-                    previousVersionLessonId: l.previousVersionLessonId,
-                    videos: l.videos.map((v) => ({
-                      id: v.id,
-                      path: v.path,
-                      clips: v.clips.map((c) => ({
-                        id: c.id,
-                        text: c.text,
+                  lessons: s.lessons
+                    .filter((l) => l.fsStatus !== "ghost")
+                    .map((l) => ({
+                      id: l.id,
+                      path: l.path,
+                      previousVersionLessonId: l.previousVersionLessonId,
+                      videos: l.videos.map((v) => ({
+                        id: v.id,
+                        path: v.path,
+                        clips: v.clips.map((c) => ({
+                          id: c.id,
+                          text: c.text,
+                        })),
                       })),
                     })),
-                  })),
                 })),
               });
             }

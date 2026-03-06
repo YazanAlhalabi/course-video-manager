@@ -124,6 +124,9 @@ export const action = async (args: Route.ActionArgs) => {
 
     for (const section of repo.sections) {
       for (const lesson of section.lessons) {
+        // Skip ghost lessons — they don't exist on the filesystem
+        // and shouldn't be matched against filesystem changes
+        if (lesson.fsStatus === "ghost") continue;
         lessonPathToLessonId.set(
           serializeSectionAndLesson(section.path, lesson.path),
           lesson.id

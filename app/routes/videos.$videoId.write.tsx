@@ -68,6 +68,7 @@ import {
   SettingsIcon,
   Trash2Icon,
   CrosshairIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -555,12 +556,13 @@ export function InnerComponent(props: Route.ComponentProps) {
     loadMessagesFromStorage(videoId, mode)
   );
 
-  const { messages, setMessages, sendMessage, status, error } = useChat({
-    transport: new DefaultChatTransport({
-      api: `/videos/${videoId}/completions`,
-    }),
-    messages: initialMessages,
-  });
+  const { messages, setMessages, sendMessage, regenerate, status, error } =
+    useChat({
+      transport: new DefaultChatTransport({
+        api: `/videos/${videoId}/completions`,
+      }),
+      messages: initialMessages,
+    });
 
   // Track previous status to detect when streaming finishes
   const prevStatusRef = useRef(status);
@@ -620,6 +622,26 @@ export function InnerComponent(props: Route.ComponentProps) {
   const handleClearChat = () => {
     setMessages([]);
     saveMessagesToStorage(videoId, mode, []);
+  };
+
+  const handleRegenerate = () => {
+    const transcriptEnabled =
+      clipSections.length > 0 ? enabledSections.size > 0 : includeTranscript;
+
+    regenerate({
+      body: {
+        enabledFiles: Array.from(enabledFiles),
+        mode,
+        model,
+        includeTranscript: transcriptEnabled,
+        enabledSections: Array.from(enabledSections),
+        courseStructure:
+          includeCourseStructure && courseStructure
+            ? courseStructure
+            : undefined,
+        memory: memoryEnabled && memory ? memory : undefined,
+      },
+    });
   };
 
   const writeToReadmeFetcher = useFetcher();
@@ -1388,6 +1410,29 @@ export function InnerComponent(props: Route.ComponentProps) {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                {/* Regenerate last response button */}
+                {messages.length > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={handleRegenerate}
+                          disabled={
+                            status === "streaming" || status === "submitted"
+                          }
+                        >
+                          <RefreshCwIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Regenerate last response</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 {/* Clear chat button - shows when there are messages */}
                 {messages.length > 0 && (
                   <TooltipProvider>

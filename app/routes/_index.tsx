@@ -918,7 +918,7 @@ export default function Component(props: Route.ComponentProps) {
                       items={displaySections.map((s) => s.id)}
                       strategy={rectSortingStrategy}
                     >
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {displaySections.map((section) => {
                           // Optimistic lesson reordering
                           let lessons = section.lessons;
@@ -1573,7 +1573,7 @@ function SortableLessonItem({
       >
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <div className="flex items-center gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
+            <div className="flex items-start gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
               <button
                 className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 touch-none"
                 {...attributes}
@@ -1589,7 +1589,7 @@ function SortableLessonItem({
               />
               <span
                 className={cn(
-                  "text-sm font-medium truncate",
+                  "text-sm font-medium",
                   isGhost && "text-muted-foreground/70 italic"
                 )}
               >

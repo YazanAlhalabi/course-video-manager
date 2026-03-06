@@ -411,7 +411,9 @@ export default function Component(props: Route.ComponentProps) {
     data.selectedRepo?.sections.reduce((acc, section) => {
       return (
         acc +
-        section.lessons.filter((lesson) => lesson.videos.length > 0).length
+        section.lessons.filter(
+          (lesson) => lesson.fsStatus !== "ghost" && lesson.videos.length > 0
+        ).length
       );
     }, 0) ?? 0;
 

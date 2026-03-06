@@ -1017,7 +1017,6 @@ export default function Component(props: Route.ComponentProps) {
                             <SortableSectionItem
                               key={section.id}
                               id={section.id}
-                              isGhostSection={isGhostSection}
                             >
                               {(dragHandleListeners) => (
                                 <>
@@ -1388,11 +1387,9 @@ type Lesson = Section["lessons"][number];
 
 function SortableSectionItem({
   id,
-  isGhostSection,
   children,
 }: {
   id: string;
-  isGhostSection: boolean;
   children: (
     dragHandleListeners: ReturnType<typeof useSortable>["listeners"]
   ) => ReactNode;
@@ -1417,10 +1414,7 @@ function SortableSectionItem({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={cn(
-        "rounded-lg border bg-card",
-        isGhostSection && "border-dashed border-muted-foreground/30 bg-muted/10"
-      )}
+      className="rounded-lg border bg-card"
     >
       {children(listeners)}
     </div>

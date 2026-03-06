@@ -21,9 +21,9 @@ export const action = async (args: Route.ActionArgs) => {
       const folderPath = path.resolve(getStandaloneVideoFilePath(videoId));
       yield* openFolder.openInExplorer(folderPath);
     } else {
-      // Lesson-connected video — open repo root directory in VS Code
+      // Lesson-connected video — open parent directory of repo in Explorer
       const repo = video.lesson.section.repoVersion.repo;
-      yield* openFolder.openInVSCode(repo.filePath);
+      yield* openFolder.openInExplorer(path.dirname(repo.filePath));
     }
 
     return { success: true };

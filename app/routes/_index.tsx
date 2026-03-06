@@ -1052,14 +1052,16 @@ export default function Component(props: Route.ComponentProps) {
                                               <Ghost className="w-3.5 h-3.5 text-muted-foreground/40" />
                                             )}
                                           </div>
-                                          <Badge
-                                            variant="secondary"
-                                            className="text-[10px]"
-                                          >
-                                            {formatSecondsToTimeCode(
-                                              sectionDuration
-                                            )}
-                                          </Badge>
+                                          {!isGhostSection && (
+                                            <Badge
+                                              variant="secondary"
+                                              className="text-[10px]"
+                                            >
+                                              {formatSecondsToTimeCode(
+                                                sectionDuration
+                                              )}
+                                            </Badge>
+                                          )}
                                         </div>
                                       </div>
                                     </ContextMenuTrigger>

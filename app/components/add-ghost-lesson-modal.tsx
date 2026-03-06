@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { capitalizeTitle } from "@/utils/capitalize-title";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
@@ -41,7 +42,12 @@ export function AddGhostLessonModal(props: {
           onSubmit={async (e) => {
             e.preventDefault();
             if (!isValid) return;
-            await fetcher.submit(e.currentTarget);
+            const formData = new FormData(e.currentTarget);
+            formData.set("title", capitalizeTitle(title.trim()));
+            await fetcher.submit(formData, {
+              method: "post",
+              action: "/api/lessons/add-ghost",
+            });
             setTitle("");
             props.onOpenChange(false);
           }}

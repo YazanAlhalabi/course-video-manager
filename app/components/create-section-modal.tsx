@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { capitalizeTitle } from "@/utils/capitalize-title";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
@@ -16,8 +17,10 @@ export function CreateSectionModal(props: {
   maxOrder: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  fetcher?: ReturnType<typeof useFetcher>;
 }) {
-  const fetcher = useFetcher();
+  const internalFetcher = useFetcher();
+  const fetcher = props.fetcher ?? internalFetcher;
   const [title, setTitle] = useState("");
   const isValid = title.trim().length > 0;
 
@@ -40,7 +43,12 @@ export function CreateSectionModal(props: {
           onSubmit={async (e) => {
             e.preventDefault();
             if (!isValid) return;
-            await fetcher.submit(e.currentTarget);
+            const formData = new FormData(e.currentTarget);
+            formData.set("title", capitalizeTitle(title.trim()));
+            await fetcher.submit(formData, {
+              method: "post",
+              action: "/api/sections/create",
+            });
             setTitle("");
             props.onOpenChange(false);
           }}

@@ -365,6 +365,7 @@ export default function Component(props: Route.ComponentProps) {
   const reorderLessonFetcher = useFetcher();
   const reorderSectionFetcher = useFetcher();
   const addGhostFetcher = useFetcher();
+  const createSectionFetcher = useFetcher();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -920,6 +921,26 @@ export default function Component(props: Route.ComponentProps) {
                   }
                 }
 
+                // Optimistic section creation
+                const pendingSectionCreate = createSectionFetcher.formData;
+                if (pendingSectionCreate) {
+                  const sectionTitle = pendingSectionCreate.get(
+                    "title"
+                  ) as string;
+                  displaySections = [
+                    ...displaySections,
+                    {
+                      id: `optimistic-section-${sectionTitle}`,
+                      path: sectionTitle,
+                      order: displaySections.length,
+                      lessons: [],
+                      repoVersionId: data.selectedVersion!.id,
+                      createdAt: new Date(),
+                      previousVersionSectionId: null,
+                    } as Section,
+                  ];
+                }
+
                 // Build flat lessons list for dependency selector
                 const allFlatLessons: DependencyLessonItem[] =
                   displaySections.flatMap((section, sectionIdx) =>
@@ -1235,6 +1256,7 @@ export default function Component(props: Route.ComponentProps) {
                   maxOrder={currentRepo.sections.length}
                   open={isCreateSectionModalOpen}
                   onOpenChange={setIsCreateSectionModalOpen}
+                  fetcher={createSectionFetcher}
                 />
               )}
             </>

@@ -98,6 +98,12 @@ export function ClipSectionNamingModal({
                     : (modalState?.currentName ?? "")
               }
               required
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
             />
           </div>
           <div className="flex justify-end space-x-2">

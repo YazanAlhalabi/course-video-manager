@@ -8,7 +8,10 @@ import {
   parseLessonPath,
   buildLessonPath,
 } from "./lesson-path-service";
-import { parseSectionPath } from "./section-path-service";
+import {
+  parseSectionPath,
+  computeSectionRenumberingPlan,
+} from "./section-path-service";
 
 export class CourseWriteError extends Data.TaggedError("CourseWriteError")<{
   cause: unknown;
@@ -463,6 +466,117 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         return { success: true };
       });
 
+      /**
+       * Reorders sections within a repo version.
+       * Renames section directories on disk, updates DB section paths,
+       * renames nested lesson directories to match new section number prefix,
+       * updates DB lesson paths, and updates section order for all sections.
+       */
+      const reorderSections = Effect.fn("reorderSections")(function* (
+        sectionIds: readonly string[]
+      ) {
+        // Get all sections to compute renumbering plan
+        const allSections = yield* db.getSectionsByIds(sectionIds);
+        const sectionsForReorder = allSections.map((s) => ({
+          id: s.id,
+          path: s.path,
+        }));
+
+        // Get repo path from the first section's hierarchy
+        const firstSection = yield* db.getSectionWithHierarchyById(
+          sectionIds[0]!
+        );
+        const repoPath = firstSection.repoVersion.repo.filePath;
+
+        // Compute which section directories need filesystem renames
+        const sectionRenames = computeSectionRenumberingPlan(
+          sectionsForReorder,
+          sectionIds
+        );
+
+        if (sectionRenames.length > 0) {
+          // Execute git mv for section directories (two-pass to avoid collisions)
+          yield* repoWrite.renameSections({
+            repoPath,
+            renames: sectionRenames.map((r) => ({
+              oldPath: r.oldPath,
+              newPath: r.newPath,
+            })),
+          });
+
+          // Update DB paths for renamed sections
+          for (const rename of sectionRenames) {
+            yield* db.updateSectionPath(rename.id, rename.newPath);
+          }
+
+          // Rename lessons within each renamed section to update their XX prefix
+          for (const sectionRename of sectionRenames) {
+            const sectionLessons = yield* db.getLessonsBySectionId(
+              sectionRename.id
+            );
+            const realLessons = sectionLessons.filter(
+              (l) => l.fsStatus !== "ghost"
+            );
+
+            if (realLessons.length === 0) continue;
+
+            // Compute lesson renames: update the section number prefix
+            const lessonRenames: Array<{ oldPath: string; newPath: string }> =
+              [];
+            for (const lesson of realLessons) {
+              const parsed = parseLessonPath(lesson.path);
+              if (!parsed) continue;
+
+              const newLessonPath = buildLessonPath(
+                sectionRename.newSectionNumber,
+                parsed.lessonNumber,
+                parsed.slug
+              );
+              if (newLessonPath !== lesson.path) {
+                lessonRenames.push({
+                  oldPath: lesson.path,
+                  newPath: newLessonPath,
+                });
+              }
+            }
+
+            if (lessonRenames.length > 0) {
+              // Execute git mv for lessons within the renamed section
+              yield* repoWrite.renameLessons({
+                repoPath,
+                sectionPath: sectionRename.newPath,
+                renames: lessonRenames,
+              });
+
+              // Update DB paths for renamed lessons
+              for (const lesson of realLessons) {
+                const parsed = parseLessonPath(lesson.path);
+                if (!parsed) continue;
+
+                const newLessonPath = buildLessonPath(
+                  sectionRename.newSectionNumber,
+                  parsed.lessonNumber,
+                  parsed.slug
+                );
+                if (newLessonPath !== lesson.path) {
+                  yield* db.updateLesson(lesson.id, {
+                    path: newLessonPath,
+                    lessonNumber: parsed.lessonNumber,
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        // Update the order field for each section based on its position
+        for (let i = 0; i < sectionIds.length; i++) {
+          yield* db.updateSectionOrder(sectionIds[i]!, i);
+        }
+
+        return { success: true };
+      });
+
       return {
         materializeGhost,
         addGhostLesson,
@@ -471,6 +585,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         renameLesson,
         reorderLessons,
         moveToSection,
+        reorderSections,
       };
     }),
     dependencies: [DBFunctionsService.Default, RepoWriteService.Default],

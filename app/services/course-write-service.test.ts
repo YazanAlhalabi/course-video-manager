@@ -127,12 +127,19 @@ const setup = async () => {
       return yield* db.getLessonWithHierarchyById(lessonId);
     }).pipe(Effect.provide(dbLayer), Effect.runPromise);
 
+  const getSection = (sectionId: string) =>
+    Effect.gen(function* () {
+      const db = yield* DBFunctionsService;
+      return yield* db.getSectionWithHierarchyById(sectionId);
+    }).pipe(Effect.provide(dbLayer), Effect.runPromise);
+
   return {
     run,
     createSection,
     createRealLesson,
     createGhostLesson,
     getLesson,
+    getSection,
   };
 };
 
@@ -1027,6 +1034,172 @@ describe("CourseWriteService", () => {
       const movedLesson = await getLesson(real1.id);
       expect(movedLesson.sectionId).toBe(section2.id);
       expect(movedLesson.path).toBe("02.01-only-lesson");
+    });
+  });
+
+  describe("reorderSections", () => {
+    it("section swap: directories renamed, nested lesson paths updated on disk and in DB", async () => {
+      const { run, createSection, createRealLesson, getLesson, getSection } =
+        await setup();
+
+      const section1 = await createSection("01-intro", 1);
+      const section2 = await createSection("02-advanced", 2);
+
+      const lesson1 = await createRealLesson(
+        section1.id,
+        "01-intro",
+        "01.01-first-lesson",
+        1
+      );
+      const lesson2 = await createRealLesson(
+        section2.id,
+        "02-advanced",
+        "02.01-second-lesson",
+        1
+      );
+
+      // Swap sections: advanced first, intro second
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.reorderSections([section2.id, section1.id]);
+        })
+      );
+
+      // Section directories swapped on disk
+      expect(fs.existsSync(path.join(tempDir, "01-advanced"))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "02-intro"))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "01-intro"))).toBe(false);
+      expect(fs.existsSync(path.join(tempDir, "02-advanced"))).toBe(false);
+
+      // Lesson directories within renamed sections updated
+      expect(
+        fs.existsSync(path.join(tempDir, "01-advanced", "01.01-second-lesson"))
+      ).toBe(true);
+      expect(
+        fs.existsSync(path.join(tempDir, "02-intro", "02.01-first-lesson"))
+      ).toBe(true);
+
+      // Old lesson paths gone
+      expect(
+        fs.existsSync(path.join(tempDir, "01-advanced", "02.01-second-lesson"))
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(tempDir, "02-intro", "01.01-first-lesson"))
+      ).toBe(false);
+
+      // DB: section paths updated
+      const updatedSection1 = await getSection(section1.id);
+      expect(updatedSection1.path).toBe("02-intro");
+      expect(updatedSection1.order).toBe(1);
+
+      const updatedSection2 = await getSection(section2.id);
+      expect(updatedSection2.path).toBe("01-advanced");
+      expect(updatedSection2.order).toBe(0);
+
+      // DB: lesson paths updated with new section number prefix
+      const updatedLesson1 = await getLesson(lesson1.id);
+      expect(updatedLesson1.path).toBe("02.01-first-lesson");
+
+      const updatedLesson2 = await getLesson(lesson2.id);
+      expect(updatedLesson2.path).toBe("01.01-second-lesson");
+    });
+
+    it("no-op when order hasn't changed", async () => {
+      const { run, createSection, createRealLesson, getLesson, getSection } =
+        await setup();
+
+      const section1 = await createSection("01-intro", 1);
+      const section2 = await createSection("02-advanced", 2);
+
+      const lesson1 = await createRealLesson(
+        section1.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.reorderSections([section1.id, section2.id]);
+        })
+      );
+
+      // Filesystem unchanged
+      expect(fs.existsSync(path.join(tempDir, "01-intro"))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "02-advanced"))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.01-first"))).toBe(
+        true
+      );
+
+      // DB unchanged
+      const updatedSection1 = await getSection(section1.id);
+      expect(updatedSection1.path).toBe("01-intro");
+
+      const updatedLesson1 = await getLesson(lesson1.id);
+      expect(updatedLesson1.path).toBe("01.01-first");
+    });
+
+    it("section with ghost lessons: only real lesson paths updated, ghosts unchanged", async () => {
+      const {
+        run,
+        createSection,
+        createRealLesson,
+        createGhostLesson,
+        getLesson,
+        getSection,
+      } = await setup();
+
+      const section1 = await createSection("01-intro", 1);
+      const section2 = await createSection("02-advanced", 2);
+
+      const real1 = await createRealLesson(
+        section1.id,
+        "01-intro",
+        "01.01-real-lesson",
+        1
+      );
+      const ghost1 = await createGhostLesson(
+        section1.id,
+        "Ghost Lesson",
+        "ghost-lesson",
+        2
+      );
+
+      // Swap sections
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.reorderSections([section2.id, section1.id]);
+        })
+      );
+
+      // Section directories swapped
+      expect(fs.existsSync(path.join(tempDir, "01-advanced"))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "02-intro"))).toBe(true);
+
+      // Real lesson path updated
+      expect(
+        fs.existsSync(path.join(tempDir, "02-intro", "02.01-real-lesson"))
+      ).toBe(true);
+
+      // DB: real lesson path updated
+      const updatedReal = await getLesson(real1.id);
+      expect(updatedReal.path).toBe("02.01-real-lesson");
+
+      // DB: ghost lesson path unchanged (no filesystem representation)
+      const updatedGhost = await getLesson(ghost1.id);
+      expect(updatedGhost.path).toBe("ghost-lesson");
+
+      // DB: section paths and order updated
+      const updatedSection1 = await getSection(section1.id);
+      expect(updatedSection1.path).toBe("02-intro");
+      expect(updatedSection1.order).toBe(1);
+
+      const updatedSection2 = await getSection(section2.id);
+      expect(updatedSection2.path).toBe("01-advanced");
+      expect(updatedSection2.order).toBe(0);
     });
   });
 });

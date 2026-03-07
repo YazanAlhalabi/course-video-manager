@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Ghost, Loader2, AlertTriangle } from "lucide-react";
+import { Ghost, Loader2, AlertTriangle, Code } from "lucide-react";
 import { useFetcher } from "react-router";
 
 export function ConvertToGhostModal(props: {
@@ -18,6 +18,7 @@ export function ConvertToGhostModal(props: {
   onOpenChange: (open: boolean) => void;
 }) {
   const fetcher = useFetcher();
+  const openRepoFetcher = useFetcher();
   const canConvert = !props.hasFilesOnDisk && !props.hasVideos;
 
   return (
@@ -37,10 +38,27 @@ export function ConvertToGhostModal(props: {
           {props.hasFilesOnDisk && (
             <div className="flex items-start gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 rounded-md p-3">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>
-                This lesson has files on disk. Remove them before converting to
-                ghost.
-              </span>
+              <div className="space-y-2">
+                <span>
+                  This lesson has files on disk. Remove them before converting
+                  to ghost.
+                </span>
+                <div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      openRepoFetcher.submit(null, {
+                        method: "post",
+                        action: `/api/lessons/${props.lessonId}/open-repo-parent`,
+                      });
+                    }}
+                  >
+                    <Code className="w-4 h-4" />
+                    Open in VS Code
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
           {props.hasVideos && (

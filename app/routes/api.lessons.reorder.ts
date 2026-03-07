@@ -1,13 +1,8 @@
 import { Console, Effect, Schema } from "effect";
 import type { Route } from "./+types/api.lessons.reorder";
-import { DBFunctionsService } from "@/services/db-service.server";
-import { RepoWriteService } from "@/services/repo-write-service";
+import { CourseWriteService } from "@/services/course-write-service";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
-import {
-  computeRenumberingPlan,
-  parseLessonPath,
-} from "@/services/lesson-path-service";
 import { data } from "react-router";
 
 const reorderSchema = Schema.Struct({
@@ -28,58 +23,8 @@ export const action = async (args: Route.ActionArgs) => {
     const { sectionId, lessonIds } =
       yield* Schema.decodeUnknown(reorderSchema)(formDataObject);
 
-    const db = yield* DBFunctionsService;
-    const repoWrite = yield* RepoWriteService;
-
-    // Get section with hierarchy to find repo path
-    const section = yield* db.getSectionWithHierarchyById(sectionId);
-    const repoPath = section.repoVersion.repo.filePath;
-    const sectionPath = section.path;
-
-    // Get all lessons for the section, ordered by their current order
-    const sectionLessons = yield* db.getLessonsBySectionId(sectionId);
-
-    // Only include real lessons in the renumbering plan — ghost lessons
-    // don't have directories on disk so git mv would fail for them.
-    const realLessons = sectionLessons.filter((l) => l.fsStatus !== "ghost");
-    const realLessonIds = lessonIds.filter((id) =>
-      realLessons.some((l) => l.id === id)
-    );
-    const lessonsForReorder = realLessons.map((l) => ({
-      id: l.id,
-      path: l.path,
-    }));
-    const renames = computeRenumberingPlan(lessonsForReorder, realLessonIds);
-
-    if (renames.length > 0) {
-      // Execute git mv for all affected directories
-      yield* repoWrite.renameLessons({
-        repoPath,
-        sectionPath,
-        renames: renames.map((r) => ({
-          oldPath: r.oldPath,
-          newPath: r.newPath,
-        })),
-      });
-
-      // Update DB paths for each renamed real lesson
-      for (const rename of renames) {
-        const parsed = parseLessonPath(rename.newPath);
-        if (parsed) {
-          yield* db.updateLesson(rename.id, {
-            path: rename.newPath,
-            lessonNumber: parsed.lessonNumber,
-          });
-        }
-      }
-    }
-
-    // Update DB order for ALL lessons (ghost + real) based on new position
-    for (let i = 0; i < lessonIds.length; i++) {
-      yield* db.updateLessonOrder(lessonIds[i]!, i);
-    }
-
-    return { success: true, renames };
+    const service = yield* CourseWriteService;
+    return yield* service.reorderLessons(sectionId, lessonIds);
   }).pipe(
     withDatabaseDump,
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),

@@ -4,6 +4,7 @@ import { RepoWriteService } from "./repo-write-service";
 import {
   toSlug,
   computeInsertionPlan,
+  computeRenumberingPlan,
   parseLessonPath,
   buildLessonPath,
 } from "./lesson-path-service";
@@ -298,12 +299,74 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         return { success: true, path: newPath };
       });
 
+      /**
+       * Reorders lessons within a section.
+       * Renames real lesson directories on disk to match the new order,
+       * updates DB paths/lessonNumbers for renamed real lessons,
+       * and updates the order field for all lessons (ghost + real).
+       */
+      const reorderLessons = Effect.fn("reorderLessons")(function* (
+        sectionId: string,
+        newOrderIds: readonly string[]
+      ) {
+        const section = yield* db.getSectionWithHierarchyById(sectionId);
+        const repoPath = section.repoVersion.repo.filePath;
+        const sectionPath = section.path;
+
+        const sectionLessons = yield* db.getLessonsBySectionId(sectionId);
+
+        // Only real lessons participate in filesystem renaming
+        const realLessons = sectionLessons.filter(
+          (l) => l.fsStatus !== "ghost"
+        );
+        const realLessonIds = newOrderIds.filter((id) =>
+          realLessons.some((l) => l.id === id)
+        );
+        const lessonsForReorder = realLessons.map((l) => ({
+          id: l.id,
+          path: l.path,
+        }));
+        const renames = computeRenumberingPlan(
+          lessonsForReorder,
+          realLessonIds
+        );
+
+        if (renames.length > 0) {
+          yield* repoWrite.renameLessons({
+            repoPath,
+            sectionPath,
+            renames: renames.map((r) => ({
+              oldPath: r.oldPath,
+              newPath: r.newPath,
+            })),
+          });
+
+          for (const rename of renames) {
+            const parsed = parseLessonPath(rename.newPath);
+            if (parsed) {
+              yield* db.updateLesson(rename.id, {
+                path: rename.newPath,
+                lessonNumber: parsed.lessonNumber,
+              });
+            }
+          }
+        }
+
+        // Update order for ALL lessons (ghost + real) based on position
+        for (let i = 0; i < newOrderIds.length; i++) {
+          yield* db.updateLessonOrder(newOrderIds[i]!, i);
+        }
+
+        return { success: true, renames };
+      });
+
       return {
         materializeGhost,
         addGhostLesson,
         deleteLesson,
         convertToGhost,
         renameLesson,
+        reorderLessons,
       };
     }),
     dependencies: [DBFunctionsService.Default, RepoWriteService.Default],

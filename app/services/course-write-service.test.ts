@@ -718,4 +718,183 @@ describe("CourseWriteService", () => {
       expect(updated.path).toBe("new-title");
     });
   });
+
+  describe("reorderLessons", () => {
+    it("reorders real lessons: renames dirs on disk and updates DB paths and order", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-second",
+        2
+      );
+      const real3 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.03-third",
+        3
+      );
+
+      // Reverse order: third, second, first
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.reorderLessons(section.id, [
+            real3.id,
+            real2.id,
+            real1.id,
+          ]);
+        })
+      );
+
+      // Filesystem: dirs renamed to match new order
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.01-third"))).toBe(
+        true
+      );
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.02-second"))
+      ).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.03-first"))).toBe(
+        true
+      );
+
+      // Old paths gone
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.01-first"))).toBe(
+        false
+      );
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.03-third"))).toBe(
+        false
+      );
+
+      // DB paths updated
+      const updated1 = await getLesson(real1.id);
+      expect(updated1.path).toBe("01.03-first");
+      expect(updated1.order).toBe(2);
+
+      const updated2 = await getLesson(real2.id);
+      expect(updated2.path).toBe("01.02-second");
+      expect(updated2.order).toBe(1);
+
+      const updated3 = await getLesson(real3.id);
+      expect(updated3.path).toBe("01.01-third");
+      expect(updated3.order).toBe(0);
+    });
+
+    it("reorder with mixed ghost + real: only real lessons renamed on disk, all get updated order", async () => {
+      const {
+        run,
+        createSection,
+        createRealLesson,
+        createGhostLesson,
+        getLesson,
+      } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const ghost = await createGhostLesson(
+        section.id,
+        "Ghost Lesson",
+        "ghost-lesson",
+        2
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-third",
+        3
+      );
+
+      // New order: real2, ghost, real1
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.reorderLessons(section.id, [
+            real2.id,
+            ghost.id,
+            real1.id,
+          ]);
+        })
+      );
+
+      // Real lessons swapped on disk
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.01-third"))).toBe(
+        true
+      );
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.02-first"))).toBe(
+        true
+      );
+
+      // DB paths updated for real lessons
+      const updatedReal1 = await getLesson(real1.id);
+      expect(updatedReal1.path).toBe("01.02-first");
+      expect(updatedReal1.order).toBe(2);
+
+      const updatedReal2 = await getLesson(real2.id);
+      expect(updatedReal2.path).toBe("01.01-third");
+      expect(updatedReal2.order).toBe(0);
+
+      // Ghost lesson: no filesystem change, order updated
+      const updatedGhost = await getLesson(ghost.id);
+      expect(updatedGhost.path).toBe("ghost-lesson"); // unchanged
+      expect(updatedGhost.order).toBe(1);
+    });
+
+    it("no-op when order hasn't changed", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-second",
+        2
+      );
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.reorderLessons(section.id, [
+            real1.id,
+            real2.id,
+          ]);
+        })
+      );
+
+      expect(result.renames).toHaveLength(0);
+
+      // Filesystem unchanged
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.01-first"))).toBe(
+        true
+      );
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.02-second"))
+      ).toBe(true);
+
+      // DB paths unchanged
+      const updated1 = await getLesson(real1.id);
+      expect(updated1.path).toBe("01.01-first");
+
+      const updated2 = await getLesson(real2.id);
+      expect(updated2.path).toBe("01.02-second");
+    });
+  });
 });

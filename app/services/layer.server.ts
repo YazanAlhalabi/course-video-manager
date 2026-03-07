@@ -12,6 +12,7 @@ import { OpenFolderService } from "./open-folder-service";
 import { CloudinaryService } from "./cloudinary-service";
 import { CloudinaryMarkdownService } from "./cloudinary-markdown-service";
 import { RepoWriteService } from "./repo-write-service";
+import { CourseWriteService } from "./course-write-service";
 
 const CloudinaryMarkdownLayer = CloudinaryMarkdownService.Default.pipe(
   Layer.provide(CloudinaryService.Default)
@@ -29,6 +30,7 @@ export const layerLive = Layer.mergeAll(
   CloudinaryService.Default,
   CloudinaryMarkdownLayer,
   RepoWriteService.Default,
+  CourseWriteService.Default,
   NodeContext.layer
 ).pipe(Layer.provideMerge(DrizzleService.Default));
 

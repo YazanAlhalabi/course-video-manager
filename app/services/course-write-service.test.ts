@@ -415,4 +415,307 @@ describe("CourseWriteService", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("addGhostLesson", () => {
+    it("creates a ghost lesson appended at end of section", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      await createRealLesson(section.id, "01-intro", "01.01-first", 1);
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.addGhostLesson(section.id, "My New Lesson");
+        })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.lessonId).toBeDefined();
+
+      const lesson = await getLesson(result.lessonId);
+      expect(lesson.fsStatus).toBe("ghost");
+      expect(lesson.title).toBe("My New Lesson");
+      expect(lesson.path).toBe("my-new-lesson");
+      expect(lesson.order).toBe(2);
+    });
+
+    it("creates first ghost lesson with order 1", async () => {
+      const { run, createSection, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.addGhostLesson(section.id, "First Lesson");
+        })
+      );
+
+      const lesson = await getLesson(result.lessonId);
+      expect(lesson.order).toBe(1);
+    });
+  });
+
+  describe("deleteLesson", () => {
+    it("deletes a real lesson from disk and database", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-to-delete",
+        1
+      );
+
+      // Verify directory exists before
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-to-delete"))
+      ).toBe(true);
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.deleteLesson(real.id);
+        })
+      );
+
+      // Directory removed from disk
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-to-delete"))
+      ).toBe(false);
+
+      // Record removed from DB
+      await expect(getLesson(real.id)).rejects.toThrow();
+    });
+
+    it("deletes a ghost lesson from database only (no filesystem ops)", async () => {
+      const { run, createSection, createGhostLesson, getLesson } =
+        await setup();
+
+      const section = await createSection("01-intro", 1);
+      const ghost = await createGhostLesson(
+        section.id,
+        "Ghost Lesson",
+        "ghost-lesson",
+        1
+      );
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.deleteLesson(ghost.id);
+        })
+      );
+
+      // Record removed from DB
+      await expect(getLesson(ghost.id)).rejects.toThrow();
+    });
+  });
+
+  describe("convertToGhost", () => {
+    it("converts a real lesson in the middle: deletes dir and renumbers remaining", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-second",
+        2
+      );
+      const real3 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.03-third",
+        3
+      );
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.convertToGhost(real2.id);
+        })
+      );
+
+      // Converted lesson is now ghost
+      const updatedReal2 = await getLesson(real2.id);
+      expect(updatedReal2.fsStatus).toBe("ghost");
+
+      // Directory removed
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.02-second"))
+      ).toBe(false);
+
+      // First lesson unchanged
+      const updatedReal1 = await getLesson(real1.id);
+      expect(updatedReal1.path).toBe("01.01-first");
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.01-first"))).toBe(
+        true
+      );
+
+      // Third lesson renumbered to close gap: 01.03 → 01.02
+      const updatedReal3 = await getLesson(real3.id);
+      expect(updatedReal3.path).toBe("01.02-third");
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.02-third"))).toBe(
+        true
+      );
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.03-third"))).toBe(
+        false
+      );
+    });
+
+    it("converts a real lesson at the end: deletes dir, no renumbering needed", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-last",
+        2
+      );
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.convertToGhost(real2.id);
+        })
+      );
+
+      // Converted lesson is ghost
+      const updatedReal2 = await getLesson(real2.id);
+      expect(updatedReal2.fsStatus).toBe("ghost");
+
+      // Directory removed
+      expect(fs.existsSync(path.join(tempDir, "01-intro", "01.02-last"))).toBe(
+        false
+      );
+
+      // First lesson unchanged
+      const updatedReal1 = await getLesson(real1.id);
+      expect(updatedReal1.path).toBe("01.01-first");
+    });
+
+    it("rejects converting a lesson that is already a ghost", async () => {
+      const { run, createSection, createGhostLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const ghost = await createGhostLesson(section.id, "Ghost", "ghost", 1);
+
+      await expect(
+        run(
+          Effect.gen(function* () {
+            const service = yield* CourseWriteService;
+            return yield* service.convertToGhost(ghost.id);
+          })
+        )
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("renameLesson", () => {
+    it("renames a real lesson slug via git mv and updates DB path", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-old-slug",
+        1
+      );
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.renameLesson(real.id, "new-slug");
+        })
+      );
+
+      expect(result.path).toBe("01.01-new-slug");
+
+      // Old dir gone, new dir exists
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-old-slug"))
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-new-slug"))
+      ).toBe(true);
+
+      // DB updated
+      const updated = await getLesson(real.id);
+      expect(updated.path).toBe("01.01-new-slug");
+    });
+
+    it("is a no-op when slug hasn't changed", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-same-slug",
+        1
+      );
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.renameLesson(real.id, "same-slug");
+        })
+      );
+
+      expect(result.path).toBe("01.01-same-slug");
+
+      // Directory unchanged
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-same-slug"))
+      ).toBe(true);
+
+      // DB unchanged
+      const updated = await getLesson(real.id);
+      expect(updated.path).toBe("01.01-same-slug");
+    });
+
+    it("renames a ghost lesson (DB only, no filesystem ops)", async () => {
+      const { run, createSection, createGhostLesson, getLesson } =
+        await setup();
+
+      const section = await createSection("01-intro", 1);
+      const ghost = await createGhostLesson(
+        section.id,
+        "Old Title",
+        "old-title",
+        1
+      );
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.renameLesson(ghost.id, "new-title");
+        })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.path).toBe("new-title");
+
+      // DB updated
+      const updated = await getLesson(ghost.id);
+      expect(updated.path).toBe("new-title");
+    });
+  });
 });

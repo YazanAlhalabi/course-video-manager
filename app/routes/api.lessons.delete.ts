@@ -1,7 +1,6 @@
 import { Console, Effect, Schema } from "effect";
 import type { Route } from "./+types/api.lessons.delete";
-import { DBFunctionsService } from "@/services/db-service.server";
-import { RepoWriteService } from "@/services/repo-write-service";
+import { CourseWriteService } from "@/services/course-write-service";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
 import { data } from "react-router";
@@ -18,27 +17,8 @@ export const action = async (args: Route.ActionArgs) => {
     const { lessonId } =
       yield* Schema.decodeUnknown(deleteLessonSchema)(formDataObject);
 
-    const db = yield* DBFunctionsService;
-    const repoWrite = yield* RepoWriteService;
-
-    // Fetch lesson with hierarchy to get filesystem paths
-    const lesson = yield* db.getLessonWithHierarchyById(lessonId);
-
-    // Only remove from disk for real lessons (ghost lessons have no files)
-    if (lesson.fsStatus !== "ghost") {
-      const repoPath = lesson.section.repoVersion.repo.filePath;
-      const sectionPath = lesson.section.path;
-
-      yield* repoWrite.deleteLesson({
-        repoPath,
-        sectionPath,
-        lessonDirName: lesson.path,
-      });
-    }
-
-    yield* db.deleteLesson(lessonId);
-
-    return { success: true };
+    const service = yield* CourseWriteService;
+    return yield* service.deleteLesson(lessonId);
   }).pipe(
     withDatabaseDump,
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),

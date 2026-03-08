@@ -44,7 +44,7 @@ while IFS= read -r file; do
     echo "  $file (~${tokens} tokens)"
     found_violations=1
   fi
-done < <(git ls-files)
+done < <(git diff --cached --name-only --diff-filter=d)
 
 if [ "$found_violations" -eq 1 ]; then
   echo ""

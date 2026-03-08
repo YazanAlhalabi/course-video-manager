@@ -207,7 +207,7 @@ export function FilterBar({
                   ? "Ghost"
                   : status === "real"
                     ? "Real"
-                    : "To-do"
+                    : "Todo"
               }
             >
               {status === "ghost" ? (
@@ -221,7 +221,7 @@ export function FilterBar({
                 ? "Ghost"
                 : status === "real"
                   ? "Real"
-                  : "To-do"}
+                  : "Todo"}
             </button>
           );
         })}

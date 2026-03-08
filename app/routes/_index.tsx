@@ -21,7 +21,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Console, Effect } from "effect";
 import { Plus } from "lucide-react";
-import { useCallback, useContext } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import { data, useFetcher, useNavigate, useSearchParams } from "react-router";
 import type { Route } from "./+types/_index";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ import {
   NoRepoView,
   RouteModals,
 } from "@/features/course-view/course-view-components";
+import { NextTodoCard } from "@/features/course-view/next-todo-card";
 
 export const meta: Route.MetaFunction = ({ data }) => {
   const selectedRepo = data?.selectedRepo;
@@ -332,6 +333,36 @@ export default function Component(props: Route.ComponentProps) {
   const repos = loaderData.repos;
   const currentRepo = loaderData.selectedRepo;
 
+  const allFlatLessons = useMemo(
+    () =>
+      (currentRepo?.sections ?? []).flatMap((section, sectionIdx) =>
+        section.lessons.map((lesson, lessonIdx) => ({
+          id: lesson.id,
+          number: `${sectionIdx + 1}.${lessonIdx + 1}`,
+          title:
+            lesson.fsStatus === "ghost"
+              ? lesson.title || lesson.path
+              : lesson.path,
+          sectionId: section.id,
+          sectionTitle: section.path,
+          sectionNumber: sectionIdx + 1,
+        }))
+      ),
+    [currentRepo?.sections]
+  );
+
+  const dependencyMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const section of currentRepo?.sections ?? []) {
+      for (const lesson of section.lessons) {
+        if (lesson.dependencies && lesson.dependencies.length > 0) {
+          map[lesson.id] = lesson.dependencies;
+        }
+      }
+    }
+    return map;
+  }, [currentRepo?.sections]);
+
   const handleBatchExport = () => {
     if (!loaderData.selectedVersion) return;
     startBatchExportUpload(loaderData.selectedVersion.id);
@@ -397,6 +428,23 @@ export default function Component(props: Route.ComponentProps) {
                   />
                 </div>
               </div>
+
+              <NextTodoCard
+                sections={currentRepo.sections}
+                data={loaderData}
+                navigate={navigate}
+                addVideoToLessonId={addVideoToLessonId}
+                editLessonId={editLessonId}
+                convertToGhostLessonId={convertToGhostLessonId}
+                dispatch={dispatch}
+                startExportUpload={startExportUpload}
+                revealVideoFetcher={revealVideoFetcher}
+                deleteVideoFileFetcher={deleteVideoFileFetcher}
+                deleteVideoFetcher={deleteVideoFetcher}
+                deleteLessonFetcher={deleteLessonFetcher}
+                allFlatLessons={allFlatLessons}
+                dependencyMap={dependencyMap}
+              />
 
               <SectionGrid
                 currentRepo={currentRepo}

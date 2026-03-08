@@ -1,148 +1,29 @@
 import type { EffectReducer } from "use-effect-reducer";
+import type { Plan, Section, Lesson } from "./types";
 import type {
-  Plan,
-  Section,
-  Lesson,
-  LessonPriority,
-  LessonIcon,
-} from "./types";
+  PlanReducerState,
+  PlanReducerAction,
+  PlanReducerEffect,
+} from "./plan-state-reducer.types";
+import {
+  generateId,
+  getTimestamp,
+  capitalizeTitle,
+  getNextPriority,
+  handleSectionReordered,
+  handleLessonReordered,
+} from "./plan-state-reducer.helpers";
 
-function generateId(): string {
-  return crypto.randomUUID();
-}
-
-function getTimestamp(): string {
-  return new Date().toISOString();
-}
-
-function capitalizeTitle(title: string): string {
-  return title
-    .split(" ")
-    .map((word) => {
-      const firstChar = word[0];
-      return firstChar ? firstChar.toUpperCase() + word.slice(1) : word;
-    })
-    .join(" ");
-}
+export type {
+  PlanReducerState,
+  PlanReducerAction,
+  PlanReducerEffect,
+} from "./plan-state-reducer.types";
 
 export namespace planStateReducer {
-  export type State = {
-    plan: Plan;
-    syncError: string | null;
-    editingTitle: { active: true; value: string } | { active: false };
-    editingSection: { sectionId: string; value: string } | null;
-    addingSection: { active: true; value: string } | { active: false };
-    editingLesson: { lessonId: string; value: string } | null;
-    addingLesson: { sectionId: string; value: string } | null;
-    editingDescription: { lessonId: string; value: string } | null;
-    focusRequest: { type: "add-lesson-button"; sectionId: string } | null;
-    deletingSection: { sectionId: string; lessonCount: number } | null;
-    deletingLesson: { sectionId: string; lessonId: string } | null;
-    // Priority filter: empty = show all, or show only lessons with matching priority
-    // Multiple priorities can be selected (empty array = show all)
-    priorityFilter: LessonPriority[];
-    // Pinned lessons are kept visible even if they don't match the filter
-    // (used when user edits priority of a lesson while filter is active)
-    pinnedLessonIds: string[];
-    // Icon filter: null = show all, or show only lessons with matching icon
-    // Multiple icons can be selected (empty array = show all)
-    iconFilter: LessonIcon[];
-  };
-
-  export type Action =
-    // Plan Title (1-4)
-    | { type: "plan-title-clicked" }
-    | { type: "plan-title-changed"; value: string }
-    | { type: "plan-title-save-requested" }
-    | { type: "plan-title-cancel-requested" }
-    // Add Section (5-8)
-    | { type: "add-section-clicked" }
-    | { type: "new-section-title-changed"; value: string }
-    | { type: "new-section-save-requested" }
-    | { type: "new-section-cancel-requested" }
-    // Edit Section (9-11)
-    | { type: "section-title-clicked"; sectionId: string }
-    | { type: "section-title-changed"; value: string }
-    | { type: "section-save-requested" }
-    | { type: "section-cancel-requested" }
-    // Delete Section (12)
-    | { type: "section-delete-clicked"; sectionId: string }
-    | { type: "section-delete-confirmed" }
-    | { type: "section-delete-cancelled" }
-    // Add Lesson (13-16)
-    | { type: "add-lesson-clicked"; sectionId: string }
-    | { type: "new-lesson-title-changed"; value: string }
-    | { type: "new-lesson-save-requested" }
-    | { type: "new-lesson-cancel-requested" }
-    // Edit Lesson (17-20)
-    | { type: "lesson-title-clicked"; lessonId: string; sectionId: string }
-    | { type: "lesson-title-changed"; value: string }
-    | { type: "lesson-save-requested" }
-    | { type: "lesson-cancel-requested" }
-    // Delete Lesson (21)
-    | { type: "lesson-delete-clicked"; sectionId: string; lessonId: string }
-    | { type: "lesson-delete-confirmed" }
-    | { type: "lesson-delete-cancelled" }
-    // Lesson Description (22-25)
-    | {
-        type: "lesson-description-clicked";
-        lessonId: string;
-        sectionId: string;
-      }
-    | { type: "lesson-description-changed"; value: string }
-    | { type: "lesson-description-save-requested" }
-    | { type: "lesson-description-cancel-requested" }
-    // Lesson Icon (26)
-    | {
-        type: "lesson-icon-changed";
-        sectionId: string;
-        lessonId: string;
-        icon: Lesson["icon"];
-      }
-    // Lesson Status
-    | {
-        type: "lesson-status-toggled";
-        sectionId: string;
-        lessonId: string;
-      }
-    // Lesson Priority
-    | {
-        type: "lesson-priority-toggled";
-        sectionId: string;
-        lessonId: string;
-      }
-    // Lesson Dependencies (27)
-    | {
-        type: "lesson-dependencies-changed";
-        sectionId: string;
-        lessonId: string;
-        dependencies: string[];
-      }
-    // Reordering (28-30)
-    | { type: "section-reordered"; sectionId: string; newIndex: number }
-    | {
-        type: "lesson-reordered";
-        fromSectionId: string;
-        toSectionId: string;
-        lessonId: string;
-        newIndex: number;
-      }
-    // Sync (31-32)
-    | { type: "sync-failed"; error: string }
-    | { type: "sync-retry-requested" }
-    // Focus (33)
-    | { type: "focus-handled" }
-    // Priority Filter (34)
-    | { type: "priority-filter-toggled"; priority: LessonPriority }
-    // Icon Filter (35)
-    | { type: "icon-filter-toggled"; icon: LessonIcon };
-
-  export type Effect =
-    | { type: "plan-changed" }
-    | {
-        type: "focus-element";
-        target: { type: "add-lesson-button"; sectionId: string };
-      };
+  export type State = PlanReducerState;
+  export type Action = PlanReducerAction;
+  export type Effect = PlanReducerEffect;
 }
 
 export const createInitialPlanState = (plan: Plan): planStateReducer.State => ({
@@ -664,15 +545,6 @@ export const planStateReducer: EffectReducer<
 
     // Lesson Priority
     case "lesson-priority-toggled": {
-      const getNextPriority = (
-        current: LessonPriority | undefined
-      ): LessonPriority => {
-        // Cycle: P2 (default) -> P3 -> P1 -> P2
-        if (current === undefined || current === 2) return 3;
-        if (current === 3) return 1;
-        return 2; // current === 1
-      };
-
       const updatedPlan: Plan = {
         ...state.plan,
         sections: state.plan.sections.map((section) =>
@@ -735,119 +607,10 @@ export const planStateReducer: EffectReducer<
     }
 
     // Reordering (28-30)
-    case "section-reordered": {
-      const sortedSections = [...state.plan.sections].sort(
-        (a, b) => a.order - b.order
-      );
-      const currentIndex = sortedSections.findIndex(
-        (s) => s.id === action.sectionId
-      );
-      if (currentIndex === -1 || currentIndex === action.newIndex) return state;
-
-      const [movedSection] = sortedSections.splice(currentIndex, 1) as [
-        Section,
-      ];
-      sortedSections.splice(action.newIndex, 0, movedSection);
-
-      const reorderedSections = sortedSections.map((section, index) => ({
-        ...section,
-        order: index,
-      }));
-
-      const updatedPlan: Plan = {
-        ...state.plan,
-        sections: reorderedSections,
-        updatedAt: getTimestamp(),
-      };
-
-      exec({ type: "plan-changed" });
-
-      return {
-        ...state,
-        plan: updatedPlan,
-      };
-    }
-    case "lesson-reordered": {
-      const fromSection = state.plan.sections.find(
-        (s) => s.id === action.fromSectionId
-      );
-      const lesson = fromSection?.lessons.find((l) => l.id === action.lessonId);
-      if (!lesson) return state;
-
-      const toSection = state.plan.sections.find(
-        (s) => s.id === action.toSectionId
-      );
-      if (!toSection) return state;
-
-      const updatedPlan: Plan = {
-        ...state.plan,
-        sections: state.plan.sections.map((section) => {
-          if (action.fromSectionId === action.toSectionId) {
-            if (section.id !== action.toSectionId) return section;
-
-            const sortedLessons = [...section.lessons].sort(
-              (a, b) => a.order - b.order
-            );
-            const currentIndex = sortedLessons.findIndex(
-              (l) => l.id === action.lessonId
-            );
-            if (currentIndex === -1 || currentIndex === action.newIndex)
-              return section;
-
-            const [movedLesson] = sortedLessons.splice(currentIndex, 1) as [
-              Lesson,
-            ];
-            sortedLessons.splice(action.newIndex, 0, movedLesson);
-
-            const reorderedLessons = sortedLessons.map((l, index) => ({
-              ...l,
-              order: index,
-            }));
-
-            return {
-              ...section,
-              lessons: reorderedLessons,
-            };
-          } else {
-            if (section.id === action.fromSectionId) {
-              const remainingLessons = section.lessons
-                .filter((l) => l.id !== action.lessonId)
-                .sort((a, b) => a.order - b.order)
-                .map((l, index) => ({ ...l, order: index }));
-              return {
-                ...section,
-                lessons: remainingLessons,
-              };
-            }
-            if (section.id === action.toSectionId) {
-              const sortedLessons = [...section.lessons].sort(
-                (a, b) => a.order - b.order
-              );
-              sortedLessons.splice(action.newIndex, 0, lesson);
-
-              const reorderedLessons = sortedLessons.map((l, index) => ({
-                ...l,
-                order: index,
-              }));
-
-              return {
-                ...section,
-                lessons: reorderedLessons,
-              };
-            }
-          }
-          return section;
-        }),
-        updatedAt: getTimestamp(),
-      };
-
-      exec({ type: "plan-changed" });
-
-      return {
-        ...state,
-        plan: updatedPlan,
-      };
-    }
+    case "section-reordered":
+      return handleSectionReordered(state, action, exec);
+    case "lesson-reordered":
+      return handleLessonReordered(state, action, exec);
 
     // Sync (31-32)
     case "sync-failed": {

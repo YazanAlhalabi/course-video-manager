@@ -53,7 +53,7 @@ function VideoThumbnailItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <button
-          className="flex flex-col text-left group/thumb w-full bg-gray-700 rounded overflow-hidden max-w-34"
+          className="flex flex-col text-left group/thumb w-full bg-gray-700 rounded overflow-hidden max-w-36"
           onMouseDown={(e) => {
             if (!isLeftClick(e)) return;
             navigate(`/videos/${video.id}/edit`);
@@ -72,16 +72,18 @@ function VideoThumbnailItem({
                 <FileVideo className="w-6 h-6 text-muted-foreground/40" />
               </div>
             )}
-            <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[12px] font-mono px-1 py-0.5 rounded leading-none">
-              {formatSecondsToTimeCode(totalDuration)}
-            </div>
             {!data.hasExportedVideoMap[video.id] && (
               <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
             )}
           </div>
-          <span className="text-xs text-muted-foreground truncate group-hover/thumb:text-foreground transition-colors py-1 px-2">
-            {video.path}
-          </span>
+          <div className="py-1 px-2 flex justify-between items-center text-muted-foreground">
+            <span className="text-xs truncate group-hover/thumb:text-foreground transition-colors">
+              {video.path}
+            </span>
+            <span className="text-[11px] font-mono">
+              {formatSecondsToTimeCode(totalDuration)}
+            </span>
+          </div>
         </button>
       </ContextMenuTrigger>
       <ContextMenuContent>

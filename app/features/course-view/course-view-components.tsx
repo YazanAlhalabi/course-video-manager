@@ -134,17 +134,17 @@ export function FilterBar({
     searchQuery.length > 0;
 
   return (
-    <div className="rounded-lg border bg-card p-3 space-y-3">
+    <div className="space-y-3">
       {/* Search input */}
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
-          placeholder="Search by path, description, or video title..."
+          placeholder="Search"
           value={searchQuery}
           onChange={(e) =>
             dispatch({ type: "set-search-query", query: e.target.value })
           }
-          className="pl-8 h-8 text-sm"
+          className="pl-8 h-8 text-sm max-w-sm"
         />
         {searchQuery && (
           <button

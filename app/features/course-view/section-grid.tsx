@@ -26,8 +26,15 @@ import {
   verticalListSortingStrategy,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Ghost, GripVertical, PencilIcon, Plus } from "lucide-react";
+import {
+  ClipboardCopy,
+  Ghost,
+  GripVertical,
+  PencilIcon,
+  Plus,
+} from "lucide-react";
 import { useNavigate, useFetcher } from "react-router";
+import { toast } from "sonner";
 
 type Fetcher = ReturnType<typeof useFetcher>;
 
@@ -438,6 +445,55 @@ export function SectionGrid({
                         >
                           <PencilIcon className="w-4 h-4" />
                           Rename
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          onSelect={async () => {
+                            const realLessons = lessons.filter(
+                              (l) => l.fsStatus !== "ghost"
+                            );
+                            const lines: string[] = [`# ${section.path}`, ""];
+                            for (const lesson of realLessons) {
+                              lines.push(`## ${lesson.title || lesson.path}`);
+                              lines.push("");
+                              if (lesson.videos.length === 0) {
+                                lines.push("(no videos)");
+                                lines.push("");
+                                continue;
+                              }
+                              for (const video of lesson.videos) {
+                                lines.push(`### ${video.path}`);
+                                lines.push("");
+                                if (video.clips.length === 0) {
+                                  lines.push("(no clips)");
+                                  lines.push("");
+                                  continue;
+                                }
+                                const transcript = video.clips
+                                  .map((c) => c.text)
+                                  .filter(Boolean)
+                                  .join(" ");
+                                if (transcript) {
+                                  lines.push(transcript);
+                                } else {
+                                  lines.push("(no transcript)");
+                                }
+                                lines.push("");
+                              }
+                            }
+                            try {
+                              await navigator.clipboard.writeText(
+                                lines.join("\n").trimEnd()
+                              );
+                              toast("Section transcript copied to clipboard");
+                            } catch {
+                              toast.error(
+                                "Failed to copy transcript to clipboard"
+                              );
+                            }
+                          }}
+                        >
+                          <ClipboardCopy className="w-4 h-4" />
+                          Copy Section Transcript
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>

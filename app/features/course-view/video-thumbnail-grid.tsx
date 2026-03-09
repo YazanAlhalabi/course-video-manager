@@ -53,13 +53,13 @@ function VideoThumbnailItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <button
-          className="flex flex-col text-left group/thumb w-full bg-gray-700 rounded overflow-hidden max-w-30"
+          className="text-left items-center group/thumb bg-gray-700 rounded overflow-hidden inline-flex"
           onMouseDown={(e) => {
             if (!isLeftClick(e)) return;
             navigate(`/videos/${video.id}/edit`);
           }}
         >
-          <div className="relative aspect-video w-full bg-muted">
+          <div className="relative aspect-video w-32 bg-muted">
             {firstClip ? (
               <img
                 src={`/clips/${firstClip.id}/first-frame`}
@@ -68,19 +68,19 @@ function VideoThumbnailItem({
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center rounded">
+              <div className="w-full h-full flex items-center justify-center border-r">
                 <FileVideo className="w-6 h-6 text-muted-foreground/40" />
               </div>
             )}
             {!data.hasExportedVideoMap[video.id] && (
-              <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+              <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-red-500" />
             )}
           </div>
-          <div className="py-1 px-2 flex justify-between items-center text-muted-foreground">
-            <span className="text-xs truncate group-hover/thumb:text-foreground transition-colors">
+          <div className="py-1 px-6 flex flex-col items-center text-muted-foreground">
+            <span className="text-xs truncate text-foreground transition-colors">
               {video.path}
             </span>
-            <span className="text-[11px] font-mono">
+            <span className="text-xs font-mono mt-0.5">
               {formatSecondsToTimeCode(totalDuration)}
             </span>
           </div>

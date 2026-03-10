@@ -64,7 +64,8 @@
       "Bash(git remote:*)",
       "Bash(npx react-router:*)",
       "Bash(git log:*)",
-      "Bash(npm run build *)"
+      "Bash(npm run build *)",
+      "Bash(npx vite:*)"
     ],
     "deny": [],
     "ask": []

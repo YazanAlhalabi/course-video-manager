@@ -435,6 +435,10 @@ export function RouteModals({
     isClearVideoFilesModalOpen: boolean;
     isRewriteRepoPathModalOpen: boolean;
     isCopyTranscriptModalOpen: boolean;
+    copySectionTranscriptState: {
+      sectionPath: string;
+      lessons: import("./course-view-types").Lesson[];
+    } | null;
     moveLessonState: {
       lessonId: string;
       lessonTitle: string;
@@ -544,12 +548,25 @@ export function RouteModals({
 
       {currentRepo && (
         <CopyTranscriptModal
+          mode="course"
           courseName={currentRepo.name}
           sections={currentRepo.sections}
           open={viewState.isCopyTranscriptModalOpen}
           onOpenChange={(open) =>
             dispatch({ type: "set-copy-transcript-modal-open", open })
           }
+        />
+      )}
+
+      {viewState.copySectionTranscriptState && (
+        <CopyTranscriptModal
+          mode="section"
+          sectionPath={viewState.copySectionTranscriptState.sectionPath}
+          lessons={viewState.copySectionTranscriptState.lessons}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) dispatch({ type: "close-copy-section-transcript" });
+          }}
         />
       )}
 

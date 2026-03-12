@@ -37,6 +37,10 @@ export namespace courseViewReducer {
     isRewriteRepoPathModalOpen: boolean;
     isAddStandaloneVideoModalOpen: boolean;
     isCopyTranscriptModalOpen: boolean;
+    copySectionTranscriptState: {
+      sectionPath: string;
+      lessons: import("./course-view-types").Lesson[];
+    } | null;
 
     // ID-based selection states (null = closed)
     addGhostLessonSectionId: string | null;
@@ -74,6 +78,12 @@ export namespace courseViewReducer {
     | { type: "set-rewrite-repo-path-modal-open"; open: boolean }
     | { type: "set-add-standalone-video-modal-open"; open: boolean }
     | { type: "set-copy-transcript-modal-open"; open: boolean }
+    | {
+        type: "open-copy-section-transcript";
+        sectionPath: string;
+        lessons: import("./course-view-types").Lesson[];
+      }
+    | { type: "close-copy-section-transcript" }
     // ID-based selections
     | { type: "set-add-ghost-lesson-section-id"; sectionId: string | null }
     | {
@@ -135,6 +145,7 @@ export function createInitialCourseViewState(): courseViewReducer.State {
     isRewriteRepoPathModalOpen: false,
     isAddStandaloneVideoModalOpen: false,
     isCopyTranscriptModalOpen: false,
+    copySectionTranscriptState: null,
     addGhostLessonSectionId: null,
     insertAdjacentLessonId: null,
     insertPosition: null,
@@ -183,6 +194,16 @@ export const courseViewReducer: EffectReducer<
       return { ...state, isAddStandaloneVideoModalOpen: action.open };
     case "set-copy-transcript-modal-open":
       return { ...state, isCopyTranscriptModalOpen: action.open };
+    case "open-copy-section-transcript":
+      return {
+        ...state,
+        copySectionTranscriptState: {
+          sectionPath: action.sectionPath,
+          lessons: action.lessons,
+        },
+      };
+    case "close-copy-section-transcript":
+      return { ...state, copySectionTranscriptState: null };
 
     // ID-based selections
     case "set-add-ghost-lesson-section-id":

@@ -9,21 +9,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import type { Section } from "@/features/course-view/course-view-types";
+import type { Lesson, Section } from "@/features/course-view/course-view-types";
 import {
   buildCourseTranscript,
+  buildSectionTranscript,
   type TranscriptOptions,
 } from "@/features/course-view/section-transcript";
 import { ClipboardCopy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-export function CopyTranscriptModal(props: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+type CourseMode = {
+  mode: "course";
   courseName: string;
   sections: Section[];
-}) {
+};
+
+type SectionMode = {
+  mode: "section";
+  sectionPath: string;
+  lessons: Lesson[];
+};
+
+export function CopyTranscriptModal(
+  props: { open: boolean; onOpenChange: (open: boolean) => void } & (
+    | CourseMode
+    | SectionMode
+  )
+) {
   const [options, setOptions] = useState<TranscriptOptions>({
     includeTranscripts: false,
     includeLessonDescriptions: true,
@@ -32,10 +45,12 @@ export function CopyTranscriptModal(props: {
     includeExerciseType: false,
   });
 
-  const preview = useMemo(
-    () => buildCourseTranscript(props.courseName, props.sections, options),
-    [props.courseName, props.sections, options]
-  );
+  const preview = useMemo(() => {
+    if (props.mode === "course") {
+      return buildCourseTranscript(props.courseName, props.sections, options);
+    }
+    return buildSectionTranscript(props.sectionPath, props.lessons, options);
+  }, [props, options]);
 
   const byteCount = new TextEncoder().encode(preview).length;
   const approxTokens = Math.ceil(byteCount / 4);
@@ -47,10 +62,13 @@ export function CopyTranscriptModal(props: {
     return `~${tokens} tokens`;
   };
 
+  const isCourse = props.mode === "course";
+  const label = isCourse ? "Course" : "Section";
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(preview);
-      toast("Course transcript copied to clipboard");
+      toast(`${label} transcript copied to clipboard`);
       props.onOpenChange(false);
     } catch {
       toast.error("Failed to copy transcript to clipboard");
@@ -61,7 +79,7 @@ export function CopyTranscriptModal(props: {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Copy Course Transcript</DialogTitle>
+          <DialogTitle>Copy {label} Transcript</DialogTitle>
           <DialogDescription>
             Choose what to include in the exported transcript.
           </DialogDescription>

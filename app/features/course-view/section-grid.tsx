@@ -16,7 +16,7 @@ import { courseViewReducer } from "@/features/course-view/course-view-reducer";
 import { SortableLessonItem } from "./sortable-lesson-item";
 import { SortableSectionItem } from "./sortable-section-item";
 import type { LoaderData, Section, Lesson } from "./course-view-types";
-import { buildSectionTranscript } from "./section-transcript";
+
 import { formatSecondsToTimeCode } from "@/services/utils";
 import {
   DndContext,
@@ -38,7 +38,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate, useFetcher } from "react-router";
-import { toast } from "sonner";
 
 type Fetcher = ReturnType<typeof useFetcher>;
 
@@ -460,18 +459,13 @@ export function SectionGrid({
                           (l) => l.fsStatus !== "ghost" && l.videos.length > 0
                         ) && (
                           <ContextMenuItem
-                            onSelect={async () => {
-                              try {
-                                await navigator.clipboard.writeText(
-                                  buildSectionTranscript(section.path, lessons)
-                                );
-                                toast("Section transcript copied to clipboard");
-                              } catch {
-                                toast.error(
-                                  "Failed to copy transcript to clipboard"
-                                );
-                              }
-                            }}
+                            onSelect={() =>
+                              dispatch({
+                                type: "open-copy-section-transcript",
+                                sectionPath: section.path,
+                                lessons,
+                              })
+                            }
                           >
                             <ClipboardCopy className="w-4 h-4" />
                             Copy Section Transcript

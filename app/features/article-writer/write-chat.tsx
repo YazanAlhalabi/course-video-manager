@@ -27,6 +27,7 @@ import {
   updateChooseScreenshotClipIndex,
   removeChooseScreenshot,
 } from "./choose-screenshot-mutations";
+import { WriteDocumentDisplay, EditDocumentDisplay } from "./tool-call-display";
 
 export interface WriteChatProps {
   messages: DocumentAgentMessage[];
@@ -227,34 +228,10 @@ export const WriteChat = memo(function WriteChat(props: WriteChatProps) {
               <AIMessage from={message.role} key={message.id}>
                 {message.parts.map((part, partIndex) => {
                   if (part.type === "tool-writeDocument") {
-                    return (
-                      <div
-                        key={partIndex}
-                        className="text-sm text-muted-foreground italic py-1"
-                      >
-                        Wrote document
-                      </div>
-                    );
+                    return <WriteDocumentDisplay key={partIndex} part={part} />;
                   }
                   if (part.type === "tool-editDocument") {
-                    const editCount = part.input?.edits?.length ?? 0;
-                    const result =
-                      part.state === "output-available"
-                        ? part.output
-                        : undefined;
-                    const failed =
-                      typeof result === "string" &&
-                      !result.includes("successfully");
-                    return (
-                      <div
-                        key={partIndex}
-                        className={`text-sm italic py-1 ${failed ? "text-red-500" : "text-muted-foreground"}`}
-                      >
-                        {failed
-                          ? "Edit failed — retrying..."
-                          : `Edited document (${editCount} ${editCount === 1 ? "edit" : "edits"})`}
-                      </div>
-                    );
+                    return <EditDocumentDisplay key={partIndex} part={part} />;
                   }
                   return null;
                 })}

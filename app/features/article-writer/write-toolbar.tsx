@@ -46,6 +46,7 @@ export interface WriteToolbarProps {
   isStandalone: boolean;
   lastAssistantMessageText: string;
   writeToReadmeFetcherState: "idle" | "submitting" | "loading";
+  hasUnresolvedScreenshots: boolean;
   onModeChange: (mode: Mode) => void;
   onModelChange: (model: Model) => void;
   onCopyToClipboard: () => void;
@@ -82,6 +83,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
     onRegenerate,
     onClearChat,
     onWriteToReadme,
+    hasUnresolvedScreenshots,
   } = props;
 
   return (
@@ -94,6 +96,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
         isCopied={isCopied}
         messagesLength={messagesLength}
         lastAssistantMessageText={lastAssistantMessageText}
+        hasUnresolvedScreenshots={hasUnresolvedScreenshots}
         onCopyToClipboard={onCopyToClipboard}
         onCopyAsRichText={onCopyAsRichText}
         onCopyConversationHistory={onCopyConversationHistory}
@@ -179,6 +182,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
           status={status}
           writeToReadmeFetcherState={writeToReadmeFetcherState}
           lastAssistantMessageText={lastAssistantMessageText}
+          hasUnresolvedScreenshots={hasUnresolvedScreenshots}
           onWriteToReadme={onWriteToReadme}
         />
       )}
@@ -227,6 +231,7 @@ function CopyButtons(props: {
   isCopied: boolean;
   messagesLength: number;
   lastAssistantMessageText: string;
+  hasUnresolvedScreenshots: boolean;
   onCopyToClipboard: () => void;
   onCopyAsRichText: () => void;
   onCopyConversationHistory: () => void;
@@ -237,6 +242,7 @@ function CopyButtons(props: {
     isCopied,
     messagesLength,
     lastAssistantMessageText,
+    hasUnresolvedScreenshots,
     onCopyToClipboard,
     onCopyAsRichText,
     onCopyConversationHistory,
@@ -292,7 +298,11 @@ function CopyButtons(props: {
         <Button
           variant="outline"
           size="sm"
-          disabled={status === "streaming" || !lastAssistantMessageText}
+          disabled={
+            status === "streaming" ||
+            !lastAssistantMessageText ||
+            hasUnresolvedScreenshots
+          }
         >
           {isCopied ? (
             <>
@@ -363,6 +373,7 @@ function ReadmeDropdown(props: {
   status: string;
   writeToReadmeFetcherState: "idle" | "submitting" | "loading";
   lastAssistantMessageText: string;
+  hasUnresolvedScreenshots: boolean;
   onWriteToReadme: (mode: "write" | "append") => void;
 }) {
   const {
@@ -370,6 +381,7 @@ function ReadmeDropdown(props: {
     status,
     writeToReadmeFetcherState,
     lastAssistantMessageText,
+    hasUnresolvedScreenshots,
     onWriteToReadme,
   } = props;
 
@@ -388,7 +400,8 @@ function ReadmeDropdown(props: {
                     status === "streaming" ||
                     writeToReadmeFetcherState === "submitting" ||
                     writeToReadmeFetcherState === "loading" ||
-                    !lastAssistantMessageText
+                    !lastAssistantMessageText ||
+                    hasUnresolvedScreenshots
                   }
                 >
                   {writeToReadmeFetcherState === "submitting" ||

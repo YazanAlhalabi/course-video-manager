@@ -13,33 +13,117 @@ import {
 } from "components/ui/kibo-ui/ai/input";
 import { AIMessage, AIMessageContent } from "components/ui/kibo-ui/ai/message";
 import { AIResponse } from "components/ui/kibo-ui/ai/response";
-import type { FormEvent } from "react";
-import { partsToText } from "./write-utils";
+import type { Options } from "react-markdown";
+import type { FormEvent, HTMLAttributes } from "react";
+import { useCallback, useMemo } from "react";
+import { partsToText, saveMessagesToStorage } from "./write-utils";
 import type { WriteToolbarProps } from "./write-toolbar";
 import { WriteToolbar } from "./write-toolbar";
+import type { IndexedClip, Mode } from "./types";
+import { ChooseScreenshot } from "./choose-screenshot";
+import { preprocessChooseScreenshotMarkdown } from "./choose-screenshot-markdown";
+import { updateChooseScreenshotClipIndex } from "./choose-screenshot-mutations";
 
 export interface WriteChatProps {
   messages: UIMessage[];
+  setMessages: (messages: UIMessage[]) => void;
   error: Error | undefined;
   fullPath: string;
   text: string;
   onTextChange: (text: string) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   status: "streaming" | "submitted" | "ready" | "error";
+  indexedClips: IndexedClip[];
+  mode: Mode;
+  videoId: string;
   toolbarProps: WriteToolbarProps;
 }
 
 export function WriteChat(props: WriteChatProps) {
   const {
     messages,
+    setMessages,
     error,
     fullPath,
     text,
     onTextChange,
     onSubmit,
     status,
+    indexedClips,
+    mode,
+    videoId,
     toolbarProps,
   } = props;
+
+  const mutateMessageText = useCallback(
+    (messageId: string, mutator: (text: string) => string) => {
+      const updated = messages.map((msg) => {
+        if (msg.id !== messageId) return msg;
+        return {
+          ...msg,
+          parts: msg.parts.map((part) => {
+            if (part.type !== "text") return part;
+            return { ...part, text: mutator(part.text) };
+          }),
+        };
+      });
+      setMessages(updated);
+      saveMessagesToStorage(videoId, mode, updated);
+    },
+    [messages, setMessages, videoId, mode]
+  );
+
+  const handleClipIndexChange = useCallback(
+    (
+      messageId: string,
+      currentIndex: number,
+      newIndex: number,
+      alt: string
+    ) => {
+      mutateMessageText(messageId, (text) =>
+        updateChooseScreenshotClipIndex(text, currentIndex, newIndex, alt)
+      );
+    },
+    [mutateMessageText]
+  );
+
+  const extraComponents = useMemo((): Options["components"] | undefined => {
+    if (indexedClips.length === 0 || mode !== "article") return undefined;
+    return {
+      choosescreenshot: ((
+        compProps: HTMLAttributes<HTMLElement> & Record<string, unknown>
+      ) => {
+        const clipIdx = parseInt(compProps.clipindex as string, 10);
+        const altText = (compProps.alt as string) ?? "";
+        const msgId = (compProps["data-message-id"] as string) ?? "";
+        return (
+          <ChooseScreenshot
+            clipIndex={clipIdx}
+            alt={altText}
+            clips={indexedClips}
+            onClipIndexChange={(current, next) =>
+              handleClipIndexChange(msgId, current, next, altText)
+            }
+          />
+        );
+      }) as unknown,
+    } as Options["components"];
+  }, [indexedClips, mode, handleClipIndexChange]);
+
+  const preprocessMarkdown = useMemo(() => {
+    if (!extraComponents) return undefined;
+    return (md: string, messageId?: string) => {
+      let processed = preprocessChooseScreenshotMarkdown(md);
+      // Inject message ID as data attribute so the component can identify which message to mutate
+      if (messageId) {
+        processed = processed.replace(
+          /<choosescreenshot /g,
+          `<choosescreenshot data-message-id="${messageId}" `
+        );
+      }
+      return processed;
+    };
+  }, [extraComponents]);
 
   return (
     <div className="w-3/4 flex flex-col">
@@ -72,7 +156,15 @@ export function WriteChat(props: WriteChatProps) {
 
             return (
               <AIMessage from={message.role} key={message.id}>
-                <AIResponse imageBasePath={fullPath ?? ""}>
+                <AIResponse
+                  imageBasePath={fullPath ?? ""}
+                  extraComponents={extraComponents}
+                  preprocessMarkdown={
+                    preprocessMarkdown
+                      ? (md: string) => preprocessMarkdown(md, message.id)
+                      : undefined
+                  }
+                >
                   {partsToText(message.parts)}
                 </AIResponse>
               </AIMessage>

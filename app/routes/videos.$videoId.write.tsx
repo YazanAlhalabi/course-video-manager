@@ -3,7 +3,10 @@
 import { DBFunctionsService } from "@/services/db-service.server";
 import { sortByOrder } from "@/lib/sort-by-order";
 import { runtimeLive } from "@/services/layer.server";
-import type { SectionWithWordCount } from "@/features/article-writer/types";
+import type {
+  SectionWithWordCount,
+  IndexedClip,
+} from "@/features/article-writer/types";
 import { Array as EffectArray, Console, Effect } from "effect";
 import { data } from "react-router";
 import type { Route } from "./+types/videos.$videoId.write";
@@ -53,9 +56,29 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const sortedItems = sortByOrder([...clipItems, ...clipSectionItems]);
 
+    // Build indexed clips array for ChooseScreenshot component
+    let clipIndex = 0;
+    const indexedClips: IndexedClip[] = [];
+    for (const item of sortedItems) {
+      if (item.type === "clip") {
+        clipIndex++;
+        const clip = video.clips.find((c) => c.order === item.order);
+        if (clip) {
+          indexedClips.push({
+            index: clipIndex,
+            sourceStartTime: clip.sourceStartTime,
+            sourceEndTime: clip.sourceEndTime,
+            videoFilename: clip.videoFilename,
+          });
+        }
+      }
+    }
+
     // Build formatted transcript with sections as H2 headers
+    // Annotate clips with sequential indices for AI screenshot placement
     const transcriptParts: string[] = [];
     let currentParagraph: string[] = [];
+    let transcriptClipIndex = 0;
 
     for (const item of sortedItems) {
       if (item.type === "clip-section") {
@@ -65,7 +88,8 @@ export const loader = async (args: Route.LoaderArgs) => {
         }
         transcriptParts.push(`## ${item.name}`);
       } else if (item.text) {
-        currentParagraph.push(item.text);
+        transcriptClipIndex++;
+        currentParagraph.push(`[${transcriptClipIndex}] ${item.text}`);
       }
     }
 
@@ -148,6 +172,7 @@ export const loader = async (args: Route.LoaderArgs) => {
         transcript,
         transcriptWordCount,
         clipSections: sectionsWithWordCount,
+        indexedClips,
         links: globalLinks,
         courseStructure: null as null | {
           repoName: string;
@@ -254,6 +279,7 @@ export const loader = async (args: Route.LoaderArgs) => {
       transcript,
       transcriptWordCount,
       clipSections: sectionsWithWordCount,
+      indexedClips,
       links: globalLinks,
       courseStructure,
       nextLessonWithoutVideo: nextLessonWithoutVideo

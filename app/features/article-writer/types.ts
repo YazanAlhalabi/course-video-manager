@@ -21,3 +21,13 @@ export type Mode = TextWritingAgentMode;
  * AI model selection for article generation.
  */
 export type Model = "claude-sonnet-4-5" | "claude-haiku-4-5";
+
+/**
+ * Indexed clip data passed to the client for ChooseScreenshot component.
+ */
+export type IndexedClip = {
+  index: number;
+  sourceStartTime: number;
+  sourceEndTime: number;
+  videoFilename: string;
+};

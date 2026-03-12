@@ -2,6 +2,7 @@
 
 import type {
   SectionWithWordCount,
+  IndexedClip,
   Mode,
   Model,
 } from "@/features/article-writer/types";
@@ -25,6 +26,7 @@ import {
   saveMessagesToStorage,
   formatConversationAsQA,
 } from "./write-utils";
+import { hasUnresolvedScreenshots } from "./choose-screenshot-mutations";
 import { WriteChat } from "./write-chat";
 import { WriteModals } from "./write-modals";
 
@@ -38,6 +40,7 @@ export interface WritePageProps {
     transcript: string;
     transcriptWordCount: number;
     clipSections: SectionWithWordCount[];
+    indexedClips: IndexedClip[];
     links: Array<{ id: string; url: string; title: string }>;
     courseStructure: {
       repoName: string;
@@ -68,6 +71,7 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
     transcript,
     transcriptWordCount,
     clipSections,
+    indexedClips,
     links,
     courseStructure,
     nextLessonWithoutVideo,
@@ -471,12 +475,16 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
         />
         <WriteChat
           messages={messages}
+          setMessages={setMessages}
           error={error}
           fullPath={fullPath}
           text={text}
           onTextChange={setText}
           onSubmit={handleSubmit}
           status={status}
+          indexedClips={indexedClips}
+          mode={mode}
+          videoId={videoId}
           toolbarProps={{
             mode,
             model,
@@ -488,6 +496,9 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
             isStandalone,
             lastAssistantMessageText,
             writeToReadmeFetcherState: writeToReadmeFetcher.state,
+            hasUnresolvedScreenshots: hasUnresolvedScreenshots(
+              lastAssistantMessageText
+            ),
             onModeChange: handleModeChange,
             onModelChange: handleModelChange,
             onCopyToClipboard: copyToClipboard,

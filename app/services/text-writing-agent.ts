@@ -455,9 +455,11 @@ export const acquireTextWritingContext = Effect.fn("acquireVideoContext")(
       const sortedAllItems = sortByOrder(allItems);
 
       // Build formatted transcript with sections as H2 headers
+      // Annotate clips with sequential 1-based indices for AI screenshot placement
       const transcriptParts: string[] = [];
       let currentParagraph: string[] = [];
       let currentSectionEnabled = allSectionsEnabled; // If no sections exist, include clips before first section
+      let clipIndex = 0;
 
       for (const item of sortedAllItems) {
         if (item.type === "clip-section") {
@@ -472,8 +474,11 @@ export const acquireTextWritingContext = Effect.fn("acquireVideoContext")(
           // Check if this section is enabled
           currentSectionEnabled =
             allSectionsEnabled || enabledSectionIds.has(item.section.id);
-        } else if (item.clip.text && currentSectionEnabled) {
-          currentParagraph.push(item.clip.text);
+        } else {
+          clipIndex++;
+          if (item.clip.text && currentSectionEnabled) {
+            currentParagraph.push(`[${clipIndex}] ${item.clip.text}`);
+          }
         }
       }
 

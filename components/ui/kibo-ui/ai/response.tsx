@@ -5,6 +5,7 @@ import type { HTMLAttributes } from "react";
 import { memo, useMemo } from "react";
 import ReactMarkdown, { type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import {
   type BundledLanguage,
   CodeBlock,
@@ -27,6 +28,8 @@ export type AIResponseProps = HTMLAttributes<HTMLDivElement> & {
   options?: Options;
   children: Options["children"];
   imageBasePath: string;
+  extraComponents?: Options["components"];
+  preprocessMarkdown?: (md: string) => string;
 };
 
 const getComponents = (imageBasePath: string): Options["components"] => ({
@@ -180,11 +183,36 @@ const getComponents = (imageBasePath: string): Options["components"] => ({
 });
 
 export const AIResponse = memo(
-  ({ className, options, children, ...props }: AIResponseProps) => {
-    const components = useMemo(
+  ({
+    className,
+    options,
+    children,
+    extraComponents,
+    preprocessMarkdown,
+    ...props
+  }: AIResponseProps) => {
+    const baseComponents = useMemo(
       () => getComponents(props.imageBasePath),
       [props.imageBasePath]
     );
+
+    const components = useMemo(
+      () =>
+        extraComponents
+          ? { ...baseComponents, ...extraComponents }
+          : baseComponents,
+      [baseComponents, extraComponents]
+    );
+
+    const processedChildren = useMemo(
+      () =>
+        preprocessMarkdown && typeof children === "string"
+          ? preprocessMarkdown(children)
+          : children,
+      [children, preprocessMarkdown]
+    );
+
+    const rehypePlugins = extraComponents ? [rehypeRaw] : [];
 
     return (
       <div
@@ -197,12 +225,15 @@ export const AIResponse = memo(
         <ReactMarkdown
           components={components}
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={rehypePlugins}
           {...options}
         >
-          {children}
+          {processedChildren}
         </ReactMarkdown>
       </div>
     );
   },
-  (prevProps, nextProps) => prevProps.children === nextProps.children
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.extraComponents === nextProps.extraComponents
 );

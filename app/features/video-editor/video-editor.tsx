@@ -87,6 +87,7 @@ const useVideoEditor = (props: {
         )
       ),
       playbackRate: 1,
+      scrubSeekTime: undefined,
     },
     {
       "archive-clips": (_state, effect, _dispatch) => {
@@ -390,6 +391,7 @@ export const VideoEditor = (props: {
       clipIdsPreloaded: state.clipIdsPreloaded,
       playbackRate: state.playbackRate,
       showLastFrameOfVideo: state.showLastFrameOfVideo,
+      scrubSeekTime: state.scrubSeekTime,
       dispatch,
 
       // Computed

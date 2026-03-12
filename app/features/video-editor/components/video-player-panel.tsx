@@ -25,7 +25,14 @@ import {
   VideoEditorContext,
   type SuggestionState,
 } from "../video-editor-context";
-import { useState, useMemo, useCallback, useContext, useEffect } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useContext,
+  useEffect,
+  type ChangeEvent,
+} from "react";
 import { UploadContext } from "@/features/upload-manager/upload-context";
 
 /**
@@ -102,6 +109,18 @@ export const VideoPlayerPanel = () => {
   const currentClipProfile = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.currentClipProfile
+  );
+  const currentClip = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.currentClip
+  );
+  const scrubSeekTime = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.scrubSeekTime
+  );
+  const dispatch = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.dispatch
   );
   const onClipFinished = useContextSelector(
     VideoEditorContext,
@@ -328,9 +347,27 @@ export const VideoPlayerPanel = () => {
                     onClipFinished={onClipFinished}
                     onUpdateCurrentTime={onUpdateCurrentTime}
                     playbackRate={playbackRate}
+                    scrubSeekTime={scrubSeekTime}
                   />
                 </div>
               </>
+            )}
+
+            {currentClip?.type === "on-database" && (
+              <input
+                type="range"
+                className="w-full mt-2 h-2 cursor-pointer accent-blue-500"
+                min={currentClip.sourceStartTime}
+                max={currentClip.sourceEndTime}
+                step={0.01}
+                value={scrubSeekTime ?? currentClip.sourceStartTime}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  dispatch({
+                    type: "scrub-to-time",
+                    time: parseFloat(e.target.value),
+                  });
+                }}
+              />
             )}
 
             <div className="flex gap-2 mt-4">

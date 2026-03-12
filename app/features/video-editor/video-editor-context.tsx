@@ -38,6 +38,7 @@ export type VideoEditorContextType = {
   clipIdsPreloaded: Set<FrontendId>;
   playbackRate: number;
   showLastFrameOfVideo: boolean;
+  scrubSeekTime: number | undefined;
   dispatch: (action: videoStateReducer.Action) => void;
 
   // Computed

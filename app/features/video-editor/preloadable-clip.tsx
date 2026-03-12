@@ -21,6 +21,7 @@ export const PreloadableClip = (props: {
   state: RunningState;
   onUpdateCurrentTime: (time: number) => void;
   profile: string | undefined;
+  scrubSeekTime: number | undefined;
 }) => {
   const [preloadState, setPreloadState] = useState<"preloading" | "finished">(
     "preloading"
@@ -40,6 +41,14 @@ export const PreloadableClip = (props: {
     }
     ref.current.playbackRate = props.playbackRate;
   }, [props.playbackRate, ref.current]);
+
+  useEffect(() => {
+    if (!ref.current || props.hidden || props.scrubSeekTime === undefined) {
+      return;
+    }
+    ref.current.pause();
+    ref.current.currentTime = props.scrubSeekTime;
+  }, [props.scrubSeekTime, props.hidden, ref.current]);
 
   useEffect(() => {
     if (!ref.current) {
@@ -145,6 +154,7 @@ export const PreloadableClipManager = (props: {
   currentClipProfile: string | undefined;
   onClipFinished: () => void;
   onUpdateCurrentTime: (time: number) => void;
+  scrubSeekTime: number | undefined;
 }) => {
   return (
     <div className="">
@@ -190,6 +200,9 @@ export const PreloadableClipManager = (props: {
                 }
               }}
               onPreloadComplete={() => {}}
+              scrubSeekTime={
+                isCurrentlyPlaying ? props.scrubSeekTime : undefined
+              }
             />
           </div>
         );

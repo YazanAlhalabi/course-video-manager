@@ -15,6 +15,11 @@ export namespace videoStateReducer {
      * Whether to show the last frame of the video.
      */
     showLastFrameOfVideo: boolean;
+    /**
+     * When set, the preview video should seek to this absolute time
+     * in the source footage. Used for frame-by-frame scrubbing.
+     */
+    scrubSeekTime: number | undefined;
   }
 
   export type Effect =
@@ -121,6 +126,10 @@ export namespace videoStateReducer {
         clipSectionId: FrontendId;
       }
     | {
+        type: "scrub-to-time";
+        time: number;
+      }
+    | {
         type: "create-video-from-selection-confirmed";
         title: string;
         mode: "copy" | "move";
@@ -191,6 +200,12 @@ export const makeVideoEditorReducer =
           showLastFrameOfVideo: !state.showLastFrameOfVideo,
           runningState: "paused",
         };
+      case "scrub-to-time":
+        return {
+          ...state,
+          runningState: "paused",
+          scrubSeekTime: action.time,
+        };
       case "press-space-bar": {
         const newRunningState =
           state.runningState === "playing" ? "paused" : "playing";
@@ -198,6 +213,8 @@ export const makeVideoEditorReducer =
         return {
           ...state,
           runningState: newRunningState,
+          scrubSeekTime:
+            newRunningState === "playing" ? undefined : state.scrubSeekTime,
           showLastFrameOfVideo:
             newRunningState === "playing" ? false : state.showLastFrameOfVideo,
         };
@@ -348,24 +365,26 @@ export const makeVideoEditorReducer =
           selectedClipsSet: new Set([firstClipAfterSection]),
         });
       }
-      case "click-clip":
+      case "click-clip": {
+        // Clear scrub state on any clip interaction
+        const s = { ...state, scrubSeekTime: undefined };
         if (action.ctrlKey) {
-          const newSelectedClipsSet = new Set(state.selectedClipsSet);
+          const newSelectedClipsSet = new Set(s.selectedClipsSet);
           if (newSelectedClipsSet.has(action.clipId)) {
             newSelectedClipsSet.delete(action.clipId);
           } else {
             newSelectedClipsSet.add(action.clipId);
           }
           return preloadSelectedClips(clipIds, {
-            ...state,
+            ...s,
             selectedClipsSet: newSelectedClipsSet,
           });
         } else if (action.shiftKey) {
-          const mostRecentItemId = Array.from(state.selectedClipsSet).pop();
+          const mostRecentItemId = Array.from(s.selectedClipsSet).pop();
 
           if (!mostRecentItemId) {
             return preloadSelectedClips(clipIds, {
-              ...state,
+              ...s,
               selectedClipsSet: new Set([action.clipId]),
             });
           }
@@ -375,7 +394,7 @@ export const makeVideoEditorReducer =
           );
 
           if (mostRecentItemIndex === -1) {
-            return state;
+            return s;
           }
 
           const newItemIndex = itemIds.findIndex(
@@ -383,7 +402,7 @@ export const makeVideoEditorReducer =
           );
 
           if (newItemIndex === -1) {
-            return state;
+            return s;
           }
           const firstIndex = Math.min(mostRecentItemIndex, newItemIndex);
           const lastIndex = Math.max(mostRecentItemIndex, newItemIndex);
@@ -391,30 +410,31 @@ export const makeVideoEditorReducer =
           const itemsBetween = itemIds.slice(firstIndex, lastIndex + 1);
 
           return preloadSelectedClips(clipIds, {
-            ...state,
+            ...s,
             selectedClipsSet: new Set(itemsBetween),
           });
         } else {
-          if (state.selectedClipsSet.size > 1) {
+          if (s.selectedClipsSet.size > 1) {
             return preloadSelectedClips(clipIds, {
-              ...state,
+              ...s,
               selectedClipsSet: new Set([action.clipId]),
             });
           }
 
-          if (state.selectedClipsSet.has(action.clipId)) {
+          if (s.selectedClipsSet.has(action.clipId)) {
             return preloadSelectedClips(clipIds, {
-              ...state,
+              ...s,
               currentClipId: action.clipId,
               runningState: "playing",
               currentTimeInClip: 0,
             });
           }
           return preloadSelectedClips(clipIds, {
-            ...state,
+            ...s,
             selectedClipsSet: new Set([action.clipId]),
           });
         }
+      }
       case "press-delete": {
         // Handle deletion of both clips and clip sections
         // First check if there are any selected items at all
@@ -494,9 +514,10 @@ export const makeVideoEditorReducer =
             ...state,
             currentClipId: nextClip,
             clipIdsPreloaded: newClipIdsPreloaded,
+            scrubSeekTime: undefined,
           };
         } else {
-          return { ...state, runningState: "paused" };
+          return { ...state, runningState: "paused", scrubSeekTime: undefined };
         }
       }
       case "press-arrow-up":

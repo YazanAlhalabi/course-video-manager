@@ -14,6 +14,7 @@ const createInitialState = (
   selectedClipsSet: new Set(),
   playbackRate: 1,
   showLastFrameOfVideo: false,
+  scrubSeekTime: undefined,
   ...overrides,
 });
 
@@ -118,6 +119,120 @@ describe("videoStateReducer", () => {
         .getState();
 
       expect(state.selectedClipsSet).toEqual(new Set([clip1, clip2, clip3]));
+    });
+  });
+
+  describe("scrub-to-time", () => {
+    it("should pause playback and set scrubSeekTime", () => {
+      const clip1 = "clip-1" as FrontendId;
+
+      const itemIds = [clip1];
+      const clipIds = [clip1];
+
+      const reducer = makeVideoEditorReducer(itemIds, clipIds);
+
+      const tester = new ReducerTester(
+        reducer,
+        createInitialState({
+          currentClipId: clip1,
+          runningState: "playing",
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "scrub-to-time",
+          time: 5.5,
+        })
+        .getState();
+
+      expect(state.runningState).toBe("paused");
+      expect(state.scrubSeekTime).toBe(5.5);
+    });
+
+    it("should clear scrubSeekTime when pressing play", () => {
+      const clip1 = "clip-1" as FrontendId;
+
+      const itemIds = [clip1];
+      const clipIds = [clip1];
+
+      const reducer = makeVideoEditorReducer(itemIds, clipIds);
+
+      const tester = new ReducerTester(
+        reducer,
+        createInitialState({
+          currentClipId: clip1,
+          runningState: "paused",
+          scrubSeekTime: 5.5,
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "press-space-bar",
+        })
+        .getState();
+
+      expect(state.runningState).toBe("playing");
+      expect(state.scrubSeekTime).toBeUndefined();
+    });
+
+    it("should clear scrubSeekTime when clicking a different clip", () => {
+      const clip1 = "clip-1" as FrontendId;
+      const clip2 = "clip-2" as FrontendId;
+
+      const itemIds = [clip1, clip2];
+      const clipIds = [clip1, clip2];
+
+      const reducer = makeVideoEditorReducer(itemIds, clipIds);
+
+      const tester = new ReducerTester(
+        reducer,
+        createInitialState({
+          currentClipId: clip1,
+          runningState: "paused",
+          scrubSeekTime: 5.5,
+          selectedClipsSet: new Set([clip1]),
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "click-clip",
+          clipId: clip2,
+          ctrlKey: false,
+          shiftKey: false,
+        })
+        .getState();
+
+      expect(state.scrubSeekTime).toBeUndefined();
+    });
+
+    it("should clear scrubSeekTime when clip finishes (auto-advance)", () => {
+      const clip1 = "clip-1" as FrontendId;
+      const clip2 = "clip-2" as FrontendId;
+
+      const itemIds = [clip1, clip2];
+      const clipIds = [clip1, clip2];
+
+      const reducer = makeVideoEditorReducer(itemIds, clipIds);
+
+      const tester = new ReducerTester(
+        reducer,
+        createInitialState({
+          currentClipId: clip1,
+          runningState: "playing",
+          scrubSeekTime: 3.0,
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "clip-finished",
+        })
+        .getState();
+
+      expect(state.scrubSeekTime).toBeUndefined();
     });
   });
 

@@ -151,7 +151,8 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
     };
   }, [memory, repoId]);
 
-  const isDocumentMode = mode === "article";
+  const isDocumentMode =
+    mode === "article" || mode === "skill-building" || mode === "newsletter";
 
   const hasExplainerOrProblem = files.some(
     (f) => f.path.startsWith("explainer/") || f.path.startsWith("problem/")
@@ -349,7 +350,7 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
         includeCourseStructure && courseStructure ? courseStructure : undefined,
       memory: memoryEnabled && memory ? memory : undefined,
     };
-    return isDocumentMode ? { ...base, document } : { ...base, mode };
+    return isDocumentMode ? { ...base, document, mode } : { ...base, mode };
   }, [
     clipSections.length,
     enabledSections,

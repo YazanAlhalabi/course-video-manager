@@ -5,6 +5,7 @@ import {
   createModelMessagesForTextWritingAgent,
 } from "@/services/text-writing-agent";
 import { createDocumentWritingAgent } from "@/services/document-writing-agent";
+import type { DocumentWritingAgentMode } from "@/services/document-writing-agent";
 import { type UIMessage } from "ai";
 import { Console, Effect, Schema } from "effect";
 import type { Route } from "./+types/videos.$videoId.document-completions";
@@ -28,10 +29,19 @@ const courseStructureSchema = Schema.Struct({
   ),
 });
 
+const documentModeSchema = Schema.Union(
+  Schema.Literal("article"),
+  Schema.Literal("skill-building"),
+  Schema.Literal("newsletter")
+);
+
 const chatSchema = Schema.Struct({
   messages: Schema.Any,
   enabledFiles: Schema.Array(Schema.String),
   model: Schema.String,
+  mode: Schema.optionalWith(documentModeSchema, {
+    default: () => "article" as const,
+  }),
   document: Schema.optional(Schema.String),
   includeTranscript: Schema.optionalWith(Schema.Boolean, {
     default: () => true,
@@ -103,6 +113,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const agent = createDocumentWritingAgent({
       model: anthropic(model),
+      mode: parsed.mode as DocumentWritingAgentMode,
       document: parsed.document,
       transcript: videoContext.transcript,
       code: videoContext.textFiles,

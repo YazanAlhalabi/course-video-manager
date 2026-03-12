@@ -1,4 +1,6 @@
 import { generateArticlePrompt } from "@/prompts/generate-article";
+import { generateStepsToCompleteForSkillBuildingProblemPrompt } from "@/prompts/generate-steps-to-complete-for-skill-building-problem";
+import { generateNewsletterPrompt } from "@/prompts/generate-newsletter";
 import type { GlobalLink } from "@/prompts/link-instructions";
 import {
   ToolLoopAgent as Agent,
@@ -12,11 +14,16 @@ import type {
   TextWritingAgentImageFile,
 } from "./text-writing-agent";
 
+export type DocumentWritingAgentMode =
+  | "article"
+  | "skill-building"
+  | "newsletter";
+
 export const writeDocumentTool = tool({
   description:
-    "Write the full article document. Use this to create the initial article.",
+    "Write the full document. Use this to create the initial content.",
   inputSchema: z.object({
-    content: z.string().describe("The full markdown content of the article"),
+    content: z.string().describe("The full markdown content of the document"),
   }),
   outputSchema: z.string(),
 });
@@ -51,6 +58,7 @@ export const editDocumentTool = tool({
 
 export const createDocumentWritingAgent = (props: {
   model: LanguageModel;
+  mode?: DocumentWritingAgentMode;
   document: string | undefined;
   transcript: string;
   code: TextWritingAgentCodeFile[];
@@ -61,22 +69,45 @@ export const createDocumentWritingAgent = (props: {
   memory?: string;
 }) => {
   const links = props.links ?? [];
+  const mode = props.mode ?? "article";
 
-  const basePrompt = generateArticlePrompt({
-    code: props.code,
-    transcript: props.transcript,
-    images: props.imageFiles.map((file) => file.path),
-    sectionNames: props.sectionNames,
-    courseStructure: props.courseStructure,
-    links,
-  });
+  const basePrompt = (() => {
+    switch (mode) {
+      case "skill-building":
+        return generateStepsToCompleteForSkillBuildingProblemPrompt({
+          code: props.code,
+          transcript: props.transcript,
+          images: props.imageFiles.map((file) => file.path),
+          courseStructure: props.courseStructure,
+          links,
+        });
+      case "newsletter":
+        return generateNewsletterPrompt({
+          code: props.code,
+          transcript: props.transcript,
+          images: props.imageFiles.map((file) => file.path),
+          courseStructure: props.courseStructure,
+          links,
+        });
+      case "article":
+      default:
+        return generateArticlePrompt({
+          code: props.code,
+          transcript: props.transcript,
+          images: props.imageFiles.map((file) => file.path),
+          sectionNames: props.sectionNames,
+          courseStructure: props.courseStructure,
+          links,
+        });
+    }
+  })();
 
   const documentInstructions = props.document
     ? `
 
 ## Document Editing Instructions
 
-A document already exists. The user will provide it in a <current-document> tag. You MUST use the \`editDocument\` tool to make changes. Do not output the full article as plain text.
+A document already exists. The user will provide it in a <current-document> tag. You MUST use the \`editDocument\` tool to make changes. Do not output the full content as plain text.
 
 Use minimal, surgical edits:
 - \`replace\`: Find a unique passage of old_text and replace it with new_text. Include enough surrounding context in old_text to ensure a unique match.
@@ -92,7 +123,7 @@ After calling editDocument, you may add a brief conversational message explainin
 
 ## Document Writing Instructions
 
-There is no document yet. You MUST use the \`writeDocument\` tool to create the article. Do not output the article as plain text — always use the tool.
+There is no document yet. You MUST use the \`writeDocument\` tool to create the content. Do not output the content as plain text — always use the tool.
 
 After calling writeDocument, you may add a brief conversational message explaining what you wrote.`;
 

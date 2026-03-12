@@ -17,6 +17,7 @@ export function StandaloneFilePasteModal(props: {
   onOpenChange: (open: boolean) => void;
   existingFiles: Array<{ path: string }>;
   onFileCreated?: (filename: string) => void;
+  defaultTextFilename?: string;
 }) {
   const fetcher = useFetcher<{ success: boolean; filename: string }>();
   const [filename, setFilename] = useState("");
@@ -39,15 +40,17 @@ export function StandaloneFilePasteModal(props: {
       }
       return `diagram-${counter}.png`;
     } else {
-      // For text: notes.md, notes-1.md, notes-2.md, etc.
-      if (!existingFilenames.includes("notes.md")) {
-        return "notes.md";
+      const baseName = props.defaultTextFilename || "notes.md";
+      const ext = baseName.endsWith(".md") ? ".md" : "";
+      const stem = ext ? baseName.slice(0, -ext.length) : baseName;
+      if (!existingFilenames.includes(baseName)) {
+        return baseName;
       }
       let counter = 1;
-      while (existingFilenames.includes(`notes-${counter}.md`)) {
+      while (existingFilenames.includes(`${stem}-${counter}${ext}`)) {
         counter++;
       }
-      return `notes-${counter}.md`;
+      return `${stem}-${counter}${ext}`;
     }
   };
 

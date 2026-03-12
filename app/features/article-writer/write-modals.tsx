@@ -48,6 +48,9 @@ export interface WriteModalsProps {
   onUpdateBannedPhrase: (index: number, updated: Partial<BannedPhrase>) => void;
   onResetBannedPhrases: () => void;
 
+  // Default filename for paste modals
+  defaultTextFilename?: string;
+
   // Add link modal
   isAddLinkModalOpen: boolean;
   onAddLinkModalOpenChange: (open: boolean) => void;
@@ -91,6 +94,7 @@ export function WriteModals(props: WriteModalsProps) {
     onRemoveBannedPhrase,
     onUpdateBannedPhrase,
     onResetBannedPhrases,
+    defaultTextFilename,
     isAddLinkModalOpen,
     onAddLinkModalOpenChange,
     nextLessonWithoutVideo,
@@ -116,6 +120,7 @@ export function WriteModals(props: WriteModalsProps) {
             onOpenChange={onPasteModalClose}
             existingFiles={files}
             onFileCreated={onStandaloneFileCreated}
+            defaultTextFilename={defaultTextFilename}
           />
           <DeleteStandaloneFileModal
             videoId={videoId}
@@ -133,6 +138,7 @@ export function WriteModals(props: WriteModalsProps) {
           onOpenChange={onLessonPasteModalClose}
           existingFiles={files}
           onFileCreated={onLessonFileCreated}
+          defaultTextFilename={defaultTextFilename}
         />
       )}
       {/* File preview modal */}

@@ -505,6 +505,7 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
       <WriteModals
         videoId={videoId}
         isStandalone={isStandalone}
+        defaultTextFilename={`${mode}.md`}
         files={files}
         selectedFilename={selectedFilename}
         selectedFileContent={selectedFileContent}

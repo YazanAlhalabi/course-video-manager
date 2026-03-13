@@ -183,8 +183,12 @@ const getComponents = (imageBasePath: string): Options["components"] => ({
       ? props.src
       : `/view-image?imagePath=${imageBasePath}/${props.src}`;
     return (
-      <div className="relative inline-block my-6">
-        <img {...props} className={cn("max-w-full", className)} src={src} />
+      <div className="relative my-6 aspect-video">
+        <img
+          {...props}
+          className={cn("w-full h-full object-contain", className)}
+          src={src}
+        />
         <div
           className={cn(
             "absolute top-2 right-2 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium shadow-sm",

@@ -46,6 +46,7 @@ export interface WriteToolbarProps {
   messagesLength: number;
   violations: LintViolation[];
   availableFolders: readonly SaveTargetFolder[];
+  foldersWithReadme: Set<string>;
   isStandalone: boolean;
   isDocumentMode: boolean;
   lastAssistantMessageText: string;
@@ -76,6 +77,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
     messagesLength,
     violations,
     availableFolders,
+    foldersWithReadme,
     isStandalone,
     isDocumentMode,
     lastAssistantMessageText,
@@ -189,6 +191,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
       {!isStandalone && !isDocumentMode && (
         <ReadmeDropdown
           availableFolders={availableFolders}
+          foldersWithReadme={foldersWithReadme}
           status={status}
           writeToReadmeFetcherState={writeToReadmeFetcherState}
           lastAssistantMessageText={lastAssistantMessageText}
@@ -392,6 +395,7 @@ function LintFixButton(props: {
 
 function ReadmeDropdown(props: {
   availableFolders: readonly SaveTargetFolder[];
+  foldersWithReadme: Set<string>;
   status: string;
   writeToReadmeFetcherState: "idle" | "submitting" | "loading";
   lastAssistantMessageText: string;
@@ -403,6 +407,7 @@ function ReadmeDropdown(props: {
 }) {
   const {
     availableFolders,
+    foldersWithReadme,
     status,
     writeToReadmeFetcherState,
     lastAssistantMessageText,
@@ -463,19 +468,21 @@ function ReadmeDropdown(props: {
                 </span>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => onWriteToReadme("append", folder)}
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              <div className="flex flex-col">
-                <span className="font-medium">
-                  Append to {folder}/readme.md
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Add to end of existing content
-                </span>
-              </div>
-            </DropdownMenuItem>
+            {foldersWithReadme.has(folder) && (
+              <DropdownMenuItem
+                onSelect={() => onWriteToReadme("append", folder)}
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    Append to {folder}/readme.md
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Add to end of existing content
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            )}
           </div>
         ))}
       </DropdownMenuContent>

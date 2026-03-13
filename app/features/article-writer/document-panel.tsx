@@ -53,6 +53,7 @@ export interface DocumentPanelProps {
   onCopyAsRichText?: () => void;
   isStandalone?: boolean;
   availableFolders?: readonly ("explainer" | "problem" | "solution")[];
+  foldersWithReadme?: Set<string>;
   writeToReadmeFetcherState?: "idle" | "submitting" | "loading";
   hasUnresolvedScreenshots?: boolean;
   onWriteToReadme?: (
@@ -78,6 +79,7 @@ export const DocumentPanel = memo(function DocumentPanel({
   onCopyAsRichText,
   isStandalone,
   availableFolders = [],
+  foldersWithReadme = new Set<string>(),
   writeToReadmeFetcherState,
   hasUnresolvedScreenshots,
   onWriteToReadme,
@@ -271,12 +273,14 @@ export const DocumentPanel = memo(function DocumentPanel({
                     <SaveIcon className="h-4 w-4 mr-2" />
                     Write to {folder}/readme.md
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => onWriteToReadme("append", folder)}
-                  >
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Append to {folder}/readme.md
-                  </DropdownMenuItem>
+                  {foldersWithReadme.has(folder) && (
+                    <DropdownMenuItem
+                      onSelect={() => onWriteToReadme("append", folder)}
+                    >
+                      <PlusIcon className="h-4 w-4 mr-2" />
+                      Append to {folder}/readme.md
+                    </DropdownMenuItem>
+                  )}
                 </div>
               ))}
             </DropdownMenuContent>

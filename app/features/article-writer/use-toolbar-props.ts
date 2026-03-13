@@ -16,6 +16,7 @@ export function useToolbarProps({
   setIsCopied,
   violations,
   availableFolders,
+  foldersWithReadme,
   isStandalone,
   isDocumentMode,
   document,
@@ -39,6 +40,7 @@ export function useToolbarProps({
   setIsCopied: (v: boolean) => void;
   violations: LintViolation[];
   availableFolders: readonly ("explainer" | "problem" | "solution")[];
+  foldersWithReadme: Set<string>;
   isStandalone: boolean;
   isDocumentMode: boolean;
   document: string | undefined;
@@ -79,6 +81,7 @@ export function useToolbarProps({
       messagesLength: messages.length,
       violations,
       availableFolders,
+      foldersWithReadme,
       isStandalone,
       isDocumentMode,
       lastAssistantMessageText,
@@ -155,6 +158,7 @@ export function useToolbarProps({
       messages,
       violations,
       availableFolders,
+      foldersWithReadme,
       isStandalone,
       lastAssistantMessageText,
       writeToReadmeFetcher,

@@ -160,6 +160,16 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
 
   const availableFolders = ["explainer", "problem", "solution"] as const;
 
+  const foldersWithReadme = useMemo(
+    () =>
+      new Set(
+        availableFolders.filter((folder) =>
+          files.some((f) => f.path.toLowerCase() === `${folder}/readme.md`)
+        )
+      ),
+    [files]
+  );
+
   const [initialMessages] = useState(() =>
     loadMessagesFromStorage(videoId, mode)
   );
@@ -514,6 +524,7 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
     setIsCopied: (v: boolean) => dispatch({ type: "set-is-copied", value: v }),
     violations,
     availableFolders,
+    foldersWithReadme,
     isStandalone,
     isDocumentMode,
     document,
@@ -620,6 +631,7 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
                 onCopyAsRichText={handleDocCopyAsRichText}
                 isStandalone={isStandalone}
                 availableFolders={availableFolders}
+                foldersWithReadme={foldersWithReadme}
                 writeToReadmeFetcherState={docWriteToReadmeFetcher.state}
                 hasUnresolvedScreenshots={hasUnresolvedScreenshots(
                   document ?? ""

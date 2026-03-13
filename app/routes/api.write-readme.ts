@@ -10,6 +10,9 @@ const writeReadmeSchema = Schema.Struct({
   lessonId: Schema.String,
   content: Schema.String,
   mode: Schema.optional(Schema.Literal("write", "append")),
+  targetFolder: Schema.optional(
+    Schema.Literal("explainer", "problem", "solution")
+  ),
 });
 
 export const action = async (args: Route.ActionArgs) => {
@@ -20,7 +23,7 @@ export const action = async (args: Route.ActionArgs) => {
     const fs = yield* FileSystem.FileSystem;
 
     const parsed = yield* Schema.decodeUnknown(writeReadmeSchema)(body);
-    const { lessonId, content, mode } = parsed;
+    const { lessonId, content, mode, targetFolder } = parsed;
 
     const lesson = yield* db.getLessonWithHierarchyById(lessonId);
     const lessonFullPath = path.join(
@@ -29,23 +32,35 @@ export const action = async (args: Route.ActionArgs) => {
       lesson.path
     );
 
-    // Check for explainer folder first, then problem folder
-    const explainerPath = path.join(lessonFullPath, "explainer");
-    const problemPath = path.join(lessonFullPath, "problem");
-
-    const explainerExists = yield* fs.exists(explainerPath);
-    const problemExists = yield* fs.exists(problemPath);
-
     let targetPath: string;
-    if (explainerExists) {
-      targetPath = path.join(explainerPath, "readme.md");
-    } else if (problemExists) {
-      targetPath = path.join(problemPath, "readme.md");
+    if (targetFolder) {
+      const folderPath = path.join(lessonFullPath, targetFolder);
+      const folderExists = yield* fs.exists(folderPath);
+      if (!folderExists) {
+        return Response.json(
+          { success: false, error: `No ${targetFolder} folder found` },
+          { status: 400 }
+        );
+      }
+      targetPath = path.join(folderPath, "readme.md");
     } else {
-      return Response.json(
-        { success: false, error: "No explainer or problem folder found" },
-        { status: 400 }
-      );
+      // Fallback: check for explainer folder first, then problem folder
+      const explainerPath = path.join(lessonFullPath, "explainer");
+      const problemPath = path.join(lessonFullPath, "problem");
+
+      const explainerExists = yield* fs.exists(explainerPath);
+      const problemExists = yield* fs.exists(problemPath);
+
+      if (explainerExists) {
+        targetPath = path.join(explainerPath, "readme.md");
+      } else if (problemExists) {
+        targetPath = path.join(problemPath, "readme.md");
+      } else {
+        return Response.json(
+          { success: false, error: "No explainer or problem folder found" },
+          { status: 400 }
+        );
+      }
     }
 
     // Handle append mode

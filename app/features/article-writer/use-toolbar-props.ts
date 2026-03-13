@@ -16,6 +16,7 @@ export function useToolbarProps({
   setIsCopied,
   violations,
   hasExplainerOrProblem,
+  availableFolders,
   isStandalone,
   isDocumentMode,
   document,
@@ -39,6 +40,7 @@ export function useToolbarProps({
   setIsCopied: (v: boolean) => void;
   violations: LintViolation[];
   hasExplainerOrProblem: boolean;
+  availableFolders: readonly ("explainer" | "problem" | "solution")[];
   isStandalone: boolean;
   isDocumentMode: boolean;
   document: string | undefined;
@@ -79,6 +81,7 @@ export function useToolbarProps({
       messagesLength: messages.length,
       violations,
       hasExplainerOrProblem,
+      availableFolders,
       isStandalone,
       isDocumentMode,
       lastAssistantMessageText,
@@ -128,9 +131,17 @@ export function useToolbarProps({
       onOpenBannedPhrases,
       onRegenerate: () => regenerate({ body: getBodyPayload() }),
       onClearChat,
-      onWriteToReadme: (writeMode: "write" | "append") => {
+      onWriteToReadme: (
+        writeMode: "write" | "append",
+        targetFolder: "explainer" | "problem" | "solution"
+      ) => {
         writeToReadmeFetcher.submit(
-          { lessonId, content: lastAssistantMessageText, mode: writeMode },
+          {
+            lessonId,
+            content: lastAssistantMessageText,
+            mode: writeMode,
+            targetFolder,
+          },
           {
             method: "POST",
             action: "/api/write-readme",
@@ -147,6 +158,7 @@ export function useToolbarProps({
       messages,
       violations,
       hasExplainerOrProblem,
+      availableFolders,
       isStandalone,
       lastAssistantMessageText,
       writeToReadmeFetcher,

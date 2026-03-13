@@ -15,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -35,6 +36,8 @@ import type { LintViolation } from "./lint-rules";
 import type { Mode, Model } from "./types";
 import { WriteModeDropdown } from "./write-mode-dropdown";
 
+export type SaveTargetFolder = "explainer" | "problem" | "solution";
+
 export interface WriteToolbarProps {
   mode: Mode;
   model: Model;
@@ -43,6 +46,7 @@ export interface WriteToolbarProps {
   messagesLength: number;
   violations: LintViolation[];
   hasExplainerOrProblem: boolean;
+  availableFolders: readonly SaveTargetFolder[];
   isStandalone: boolean;
   isDocumentMode: boolean;
   lastAssistantMessageText: string;
@@ -58,7 +62,10 @@ export interface WriteToolbarProps {
   onOpenBannedPhrases: () => void;
   onRegenerate: () => void;
   onClearChat: () => void;
-  onWriteToReadme: (mode: "write" | "append") => void;
+  onWriteToReadme: (
+    mode: "write" | "append",
+    targetFolder: SaveTargetFolder
+  ) => void;
 }
 
 export function WriteToolbar(props: WriteToolbarProps) {
@@ -70,6 +77,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
     messagesLength,
     violations,
     hasExplainerOrProblem,
+    availableFolders,
     isStandalone,
     isDocumentMode,
     lastAssistantMessageText,
@@ -183,6 +191,7 @@ export function WriteToolbar(props: WriteToolbarProps) {
       {!isStandalone && !isDocumentMode && (
         <ReadmeDropdown
           hasExplainerOrProblem={hasExplainerOrProblem}
+          availableFolders={availableFolders}
           status={status}
           writeToReadmeFetcherState={writeToReadmeFetcherState}
           lastAssistantMessageText={lastAssistantMessageText}
@@ -386,14 +395,19 @@ function LintFixButton(props: {
 
 function ReadmeDropdown(props: {
   hasExplainerOrProblem: boolean;
+  availableFolders: readonly SaveTargetFolder[];
   status: string;
   writeToReadmeFetcherState: "idle" | "submitting" | "loading";
   lastAssistantMessageText: string;
   hasUnresolvedScreenshots: boolean;
-  onWriteToReadme: (mode: "write" | "append") => void;
+  onWriteToReadme: (
+    mode: "write" | "append",
+    targetFolder: SaveTargetFolder
+  ) => void;
 }) {
   const {
     hasExplainerOrProblem,
+    availableFolders,
     status,
     writeToReadmeFetcherState,
     lastAssistantMessageText,
@@ -445,24 +459,33 @@ function ReadmeDropdown(props: {
         </Tooltip>
       </TooltipProvider>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => onWriteToReadme("write")}>
-          <SaveIcon className="h-4 w-4 mr-2" />
-          <div className="flex flex-col">
-            <span className="font-medium">Write to README</span>
-            <span className="text-xs text-muted-foreground">
-              Replace existing content
-            </span>
+        {availableFolders.map((folder, index) => (
+          <div key={folder}>
+            {index > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem onSelect={() => onWriteToReadme("write", folder)}>
+              <SaveIcon className="h-4 w-4 mr-2" />
+              <div className="flex flex-col">
+                <span className="font-medium">Write to {folder}/readme.md</span>
+                <span className="text-xs text-muted-foreground">
+                  Replace existing content
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => onWriteToReadme("append", folder)}
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              <div className="flex flex-col">
+                <span className="font-medium">
+                  Append to {folder}/readme.md
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Add to end of existing content
+                </span>
+              </div>
+            </DropdownMenuItem>
           </div>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onWriteToReadme("append")}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          <div className="flex flex-col">
-            <span className="font-medium">Append to README</span>
-            <span className="text-xs text-muted-foreground">
-              Add to end of existing content
-            </span>
-          </div>
-        </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

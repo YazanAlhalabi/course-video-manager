@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -53,9 +54,13 @@ export interface DocumentPanelProps {
   onCopyAsRichText?: () => void;
   isStandalone?: boolean;
   hasExplainerOrProblem?: boolean;
+  availableFolders?: readonly ("explainer" | "problem" | "solution")[];
   writeToReadmeFetcherState?: "idle" | "submitting" | "loading";
   hasUnresolvedScreenshots?: boolean;
-  onWriteToReadme?: (mode: "write" | "append") => void;
+  onWriteToReadme?: (
+    mode: "write" | "append",
+    targetFolder: "explainer" | "problem" | "solution"
+  ) => void;
   isUploadingImages?: boolean;
   onUploadImages?: () => void;
   violations?: LintViolation[];
@@ -75,6 +80,7 @@ export const DocumentPanel = memo(function DocumentPanel({
   onCopyAsRichText,
   isStandalone,
   hasExplainerOrProblem,
+  availableFolders = [],
   writeToReadmeFetcherState,
   hasUnresolvedScreenshots,
   onWriteToReadme,
@@ -264,14 +270,23 @@ export const DocumentPanel = memo(function DocumentPanel({
               </Tooltip>
             </TooltipProvider>
             <DropdownMenuContent>
-              <DropdownMenuItem onSelect={() => onWriteToReadme("write")}>
-                <SaveIcon className="h-4 w-4 mr-2" />
-                Write to README
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onWriteToReadme("append")}>
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Append to README
-              </DropdownMenuItem>
+              {availableFolders.map((folder, index) => (
+                <div key={folder}>
+                  {index > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuItem
+                    onSelect={() => onWriteToReadme("write", folder)}
+                  >
+                    <SaveIcon className="h-4 w-4 mr-2" />
+                    Write to {folder}/readme.md
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => onWriteToReadme("append", folder)}
+                  >
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Append to {folder}/readme.md
+                  </DropdownMenuItem>
+                </div>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

@@ -83,11 +83,14 @@ export function useDocumentPanelActions({
 
   // Write to readme handler
   const handleWriteToReadme = useCallback(
-    (writeMode: "write" | "append") => {
+    (
+      writeMode: "write" | "append",
+      targetFolder: "explainer" | "problem" | "solution"
+    ) => {
       const currentDoc = documentRef.current;
       if (!currentDoc) return;
       writeToReadmeFetcher.submit(
-        { lessonId, content: currentDoc, mode: writeMode },
+        { lessonId, content: currentDoc, mode: writeMode, targetFolder },
         {
           method: "POST",
           action: "/api/write-readme",

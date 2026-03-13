@@ -17,7 +17,7 @@ import {
   useState,
   type HTMLAttributes,
 } from "react";
-import { useFetcher, useRevalidator } from "react-router";
+import { useFetcher, useBlocker, useRevalidator } from "react-router";
 import { toast } from "sonner";
 import type { Options } from "react-markdown";
 import { VideoContextPanel } from "@/components/video-context-panel";
@@ -186,6 +186,17 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
     transport: new DefaultChatTransport({ api: chatApi }),
     messages: initialMessages,
   });
+
+  const isGenerating = status === "streaming" || status === "submitted";
+
+  const blocker = useBlocker(isGenerating);
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      toast.warning("Cannot navigate while document is generating");
+      blocker.reset();
+    }
+  }, [blocker]);
 
   const { document, documentRef, clearDocument, saveDocument, updateDocument } =
     useDocumentFlow({

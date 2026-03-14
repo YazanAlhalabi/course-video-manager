@@ -51,6 +51,11 @@ export const editDocumentTool = tool({
             "For insert_after: the exact text after which to insert new content."
           ),
         new_text: z.string().describe("The new text to insert or replace with"),
+        message: z
+          .string()
+          .describe(
+            "A very short (max 20 chars) commit-style reason for this edit, e.g. 'fix typo', 'add intro', 'reword heading'"
+          ),
       })
     ),
   }),

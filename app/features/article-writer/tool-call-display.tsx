@@ -27,6 +27,7 @@ type EditInput = {
   old_text?: string;
   anchor?: string;
   new_text?: string;
+  message?: string;
 };
 
 type ToolCallPart = {
@@ -247,15 +248,17 @@ function EditItem({
               isReverted && "line-through opacity-50"
             )}
           >
-            {edit.type === "replace" &&
-            typeof edit.old_text === "string" &&
-            edit.old_text
-              ? truncate(edit.old_text.split("\n")[0] ?? "", 60)
-              : edit.type === "insert_after" &&
-                  typeof edit.anchor === "string" &&
-                  edit.anchor
-                ? `after "${truncate(edit.anchor.split("\n")[0] ?? "", 50)}"`
-                : "Full document"}
+            {edit.message
+              ? edit.message
+              : edit.type === "replace" &&
+                  typeof edit.old_text === "string" &&
+                  edit.old_text
+                ? truncate(edit.old_text.split("\n")[0] ?? "", 60)
+                : edit.type === "insert_after" &&
+                    typeof edit.anchor === "string" &&
+                    edit.anchor
+                  ? `after "${truncate(edit.anchor.split("\n")[0] ?? "", 50)}"`
+                  : "Full document"}
           </span>
         </CollapsibleTrigger>
         {canRevert && (
@@ -387,7 +390,10 @@ export const EditDocumentDisplay = memo(function EditDocumentDisplay({
   documentRef?: React.RefObject<string | undefined>;
   updateDocument?: (content: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const hasMessages = (part.input?.edits ?? []).some(
+    (e) => e != null && e.message
+  );
+  const [open, setOpen] = useState(hasMessages);
   const [revertedEdits, setRevertedEdits] = useState<Set<number>>(new Set());
   const edits = (part.input?.edits ?? []).filter(
     (e): e is EditInput => e != null

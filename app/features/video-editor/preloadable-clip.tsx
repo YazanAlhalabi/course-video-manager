@@ -103,6 +103,7 @@ export const PreloadableClip = (props: {
           props.onPreloadComplete();
         }
       } else if (currentTime >= modifiedEndTime) {
+        ref.current!.pause();
         props.onFinish();
         ref.current!.currentTime = props.clip.sourceStartTime;
         return;

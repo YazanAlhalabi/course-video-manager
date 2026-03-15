@@ -151,8 +151,8 @@ export const VideoContextPanel = memo(function VideoContextPanel({
           className={cn(
             "px-3 py-1.5 text-sm font-medium rounded transition-colors",
             sidebarTab === "context"
-              ? "bg-gray-700 text-white"
-              : "text-gray-400 hover:text-gray-200"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
           Context
@@ -162,8 +162,8 @@ export const VideoContextPanel = memo(function VideoContextPanel({
           className={cn(
             "px-3 py-1.5 text-sm font-medium rounded transition-colors",
             sidebarTab === "links"
-              ? "bg-gray-700 text-white"
-              : "text-gray-400 hover:text-gray-200"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
           Links
@@ -174,8 +174,8 @@ export const VideoContextPanel = memo(function VideoContextPanel({
             className={cn(
               "px-3 py-1.5 text-sm font-medium rounded transition-colors",
               sidebarTab === "memory"
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-gray-200"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             Memory
@@ -183,7 +183,7 @@ export const VideoContextPanel = memo(function VideoContextPanel({
         )}
       </div>
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+      <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground">
         {sidebarTab === "context" && (
           <>
             <div className="flex items-center gap-2 py-1 px-2">

@@ -410,9 +410,9 @@ export default function PostPageRoute(props: Route.ComponentProps) {
             videoExists ? (
               <Video src={`/api/videos/${videoId}/stream`} />
             ) : (
-              <div className="w-full aspect-[16/9] bg-gray-800 rounded-lg flex flex-col items-center justify-center gap-3">
-                <VideoOffIcon className="size-10 text-gray-500" />
-                <p className="text-gray-400 text-sm text-center px-4">
+              <div className="w-full aspect-[16/9] bg-card rounded-lg flex flex-col items-center justify-center gap-3">
+                <VideoOffIcon className="size-10 text-muted-foreground" />
+                <p className="text-muted-foreground text-sm text-center px-4">
                   Video file not found on disk.
                 </p>
               </div>
@@ -434,7 +434,7 @@ export default function PostPageRoute(props: Route.ComponentProps) {
         />
 
         {/* Right panel: Tabbed posting interface */}
-        <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+        <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground">
           <PostPage
             videoId={videoId}
             isYoutubeAuthenticated={isYoutubeAuthenticated}

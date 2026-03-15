@@ -53,7 +53,7 @@ function VideoThumbnailItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <button
-          className="text-left items-center group/thumb bg-gray-700 rounded overflow-hidden inline-flex"
+          className="text-left items-center group/thumb bg-muted rounded overflow-hidden inline-flex"
           onMouseDown={(e) => {
             if (!isLeftClick(e)) return;
             navigate(`/videos/${video.id}/edit`);

@@ -217,8 +217,8 @@ function ControlPanel({
   dispatch: React.Dispatch<Action>;
 }) {
   return (
-    <div className="flex items-center gap-2 p-3 bg-gray-900 rounded-lg border border-gray-700 mb-4">
-      <span className="text-xs text-gray-400 mr-2 font-medium uppercase tracking-wider">
+    <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border mb-4">
+      <span className="text-xs text-muted-foreground mr-2 font-medium uppercase tracking-wider">
         Simulate:
       </span>
       {state.recordingState === "idle" && (
@@ -299,18 +299,18 @@ function TimelineClipRow({
   onDelete: () => void;
 }) {
   return (
-    <div className="bg-gray-800 rounded-md text-left relative overflow-hidden flex w-full group">
-      <div className="flex-shrink-0 relative w-32 aspect-[16/9] bg-gray-600 rounded flex items-center justify-center overflow-hidden">
+    <div className="bg-card rounded-md text-left relative overflow-hidden flex w-full group">
+      <div className="flex-shrink-0 relative w-32 aspect-[16/9] bg-muted rounded flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-purple-900/40" />
-        <span className="text-[10px] text-gray-300 z-10">0:03</span>
+        <span className="text-[10px] text-muted-foreground z-10">0:03</span>
       </div>
       <div className="flex-1 flex items-center min-w-0 p-3">
-        <span className="text-gray-100 text-sm leading-6 flex-1">
+        <span className="text-foreground text-sm leading-6 flex-1">
           {clip.resolved?.text}
         </span>
         <button
           onClick={onDelete}
-          className="text-gray-600 hover:text-red-400 p-1 rounded hover:bg-gray-700/50 transition-colors opacity-0 group-hover:opacity-100"
+          className="text-muted-foreground hover:text-red-400 p-1 rounded hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100"
           title="Delete clip"
         >
           <Trash2Icon className="size-3.5" />
@@ -333,7 +333,7 @@ function PendingClipRow({
     <div
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded text-sm",
-        clip.state === "orphaned" ? "bg-amber-950/30" : "bg-gray-800/50"
+        clip.state === "orphaned" ? "bg-amber-950/30" : "bg-card/50"
       )}
     >
       {clip.state === "orphaned" ? (
@@ -344,19 +344,19 @@ function PendingClipRow({
       <span
         className={cn(
           "flex-1",
-          clip.state === "orphaned" ? "text-amber-300" : "text-gray-400"
+          clip.state === "orphaned" ? "text-amber-300" : "text-muted-foreground"
         )}
       >
         {clip.state === "optimistic" && "Detecting silence..."}
         {clip.state === "processing" && "Processing..."}
         {clip.state === "orphaned" && "No clip found"}
       </span>
-      <span className="text-[10px] text-gray-500">
+      <span className="text-[10px] text-muted-foreground">
         #{clip.insertionOrder} · {clip.scene} / {clip.profile}
       </span>
       <button
         onClick={onDelete}
-        className="text-gray-500 hover:text-red-400 p-1 rounded hover:bg-gray-700/50 transition-colors"
+        className="text-muted-foreground hover:text-red-400 p-1 rounded hover:bg-muted/50 transition-colors"
         title="Delete clip"
       >
         <Trash2Icon className="size-3.5" />
@@ -382,15 +382,17 @@ function ArchivedClipRow({
       <span
         className={cn(
           "flex-1 line-through",
-          isResolved ? "text-gray-400" : "text-gray-500"
+          isResolved ? "text-muted-foreground" : "text-muted-foreground/70"
         )}
       >
         {isResolved ? clip.resolved!.text : "Awaiting clip..."}
       </span>
-      <span className="text-[10px] text-gray-600">#{clip.insertionOrder}</span>
+      <span className="text-[10px] text-muted-foreground">
+        #{clip.insertionOrder}
+      </span>
       <button
         onClick={onRestore}
-        className="text-gray-500 hover:text-blue-300 text-xs flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-gray-700/50 transition-colors"
+        className="text-muted-foreground hover:text-blue-400 text-xs flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted/50 transition-colors"
       >
         <UndoIcon className="size-3" />
         Restore
@@ -419,8 +421,8 @@ export default function PrototypeOptimisticClips() {
   const progress = totalActive > 0 ? resolvedCount / totalActive : 0;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 text-white">
-      <div className="flex items-center gap-3 p-4 border-b border-gray-800">
+    <div className="h-screen flex flex-col bg-background text-foreground">
+      <div className="flex items-center gap-3 p-4 border-b border-border">
         <h1 className="text-lg font-semibold">
           Pending Clips — Grouped Section with Recoverable Deletes
         </h1>
@@ -429,7 +431,7 @@ export default function PrototypeOptimisticClips() {
       <div className="flex-1 overflow-hidden p-4 flex flex-col">
         <ControlPanel state={state} dispatch={dispatch} />
 
-        <div className="text-xs text-gray-500 px-1 mb-3">
+        <div className="text-xs text-muted-foreground px-1 mb-3">
           Delete a clip (pending or resolved) and it moves to the archived
           section. When its DB clip arrives, it stays archived but recoverable.
           Restoring puts it back in insertion order.
@@ -449,7 +451,7 @@ export default function PrototypeOptimisticClips() {
                 />
               ))}
               {timelineClips.length === 0 && !showBottomSection && (
-                <div className="text-center text-gray-600 text-sm py-12">
+                <div className="text-center text-muted-foreground text-sm py-12">
                   Start recording and speak to create clips
                 </div>
               )}
@@ -457,15 +459,15 @@ export default function PrototypeOptimisticClips() {
 
             {/* ── Bottom section: pending + archived ── */}
             {showBottomSection && (
-              <div className="rounded-lg border border-gray-700 overflow-hidden">
+              <div className="rounded-lg border border-border overflow-hidden">
                 {/* Header */}
-                <div className="bg-gray-800/80 px-4 py-2.5 flex items-center justify-between">
+                <div className="bg-card/80 px-4 py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-200">
+                    <span className="text-sm font-medium text-foreground">
                       Pending Clips
                     </span>
                     {totalActive > 0 && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         {resolvedCount}/{totalActive} resolved
                       </span>
                     )}
@@ -474,7 +476,7 @@ export default function PrototypeOptimisticClips() {
 
                 {/* Progress bar */}
                 {hasPending && (
-                  <div className="h-1 bg-gray-700">
+                  <div className="h-1 bg-muted">
                     <div
                       className={cn(
                         "h-full transition-all duration-500",
@@ -505,7 +507,7 @@ export default function PrototypeOptimisticClips() {
 
                 {/* Archived / deleted clips sub-section */}
                 {hasArchived && (
-                  <div className="border-t border-gray-700/50">
+                  <div className="border-t border-border/50">
                     <button
                       onClick={() => setArchivedExpanded(!archivedExpanded)}
                       className="w-full px-4 py-2 flex items-center justify-between bg-red-950/20 hover:bg-red-950/30 transition-colors"

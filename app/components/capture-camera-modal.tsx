@@ -238,7 +238,7 @@ export function CaptureCameraModal({
               className="h-full w-full object-contain"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-gray-400">
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
               {error || "Connecting to camera..."}
             </div>
           )}

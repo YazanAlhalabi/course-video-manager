@@ -65,7 +65,7 @@ function YouTubePreview({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <div className="relative" style={{ width, height }}>
         <img
           src={src}
@@ -205,7 +205,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
       {/* Left sidebar: saved thumbnails */}
       {thumbnails.length > 0 && (
         <div className="w-48 shrink-0 border-r overflow-y-auto p-3">
-          <h3 className="mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Saved ({thumbnails.length})
           </h3>
           <div className="space-y-2">
@@ -215,8 +215,8 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                   <div
                     className={`group relative rounded-lg overflow-hidden cursor-pointer transition-all ${
                       state.editingThumbnailId === thumbnail.id
-                        ? "ring-2 ring-blue-500 border border-blue-500"
-                        : "border hover:border-gray-400"
+                        ? "ring-2 ring-ring border border-ring"
+                        : "border hover:border-border"
                     }`}
                     onClick={() =>
                       dispatch({
@@ -232,7 +232,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                         className="w-full aspect-video object-cover"
                       />
                     ) : (
-                      <div className="w-full aspect-video bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
+                      <div className="w-full aspect-video bg-card flex items-center justify-center text-muted-foreground text-xs">
                         Not rendered
                       </div>
                     )}
@@ -288,7 +288,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             ))}
           </div>
           <button
-            className="mt-2 flex w-full items-center justify-center rounded-lg border border-dashed border-gray-600 p-2 text-gray-400 hover:border-gray-400 hover:text-gray-200 transition-colors"
+            className="mt-2 flex w-full items-center justify-center rounded-lg border border-dashed border-border p-2 text-muted-foreground hover:border-muted-foreground hover:text-foreground transition-colors"
             onClick={() => dispatch({ type: "new-thumbnail-clicked" })}
           >
             <PlusIcon className="size-4" />
@@ -302,7 +302,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           <div className="flex items-center gap-3">
             <Link
               to={`/videos/${videoId}/post`}
-              className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeftIcon className="size-4" />
               Post
@@ -317,7 +317,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
 
         {(state.capturedPhoto || state.diagramImage) && (
           <div className="mb-6">
-            <h3 className="mb-2 text-sm font-medium text-gray-400">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">
               {state.editingThumbnailId
                 ? "Editing Thumbnail"
                 : "Canvas Preview"}
@@ -332,18 +332,20 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             </div>
             {/* Layer controls */}
             <div className="mt-4 space-y-3">
-              <h3 className="text-sm font-medium text-gray-400">Layers</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Layers
+              </h3>
 
               {/* Background layer */}
               {state.capturedPhoto ? (
                 <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
-                  <ImageIcon className="size-4 text-gray-400" />
+                  <ImageIcon className="size-4 text-muted-foreground" />
                   <span>Background Photo</span>
                 </div>
               ) : (
                 <button
                   onClick={() => dispatch({ type: "open-camera" })}
-                  className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-400"
+                  className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-muted-foreground hover:text-muted-foreground"
                 >
                   <CameraIcon className="size-4" />
                   <span>Capture a face photo</span>
@@ -355,18 +357,18 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                 <div className="rounded border px-3 py-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <ClipboardIcon className="size-4 text-gray-400" />
+                      <ClipboardIcon className="size-4 text-muted-foreground" />
                       <span>Diagram</span>
                     </div>
                     <button
                       onClick={() => dispatch({ type: "diagram-removed" })}
-                      className="text-gray-400 hover:text-gray-200"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       <XIcon className="size-4" />
                     </button>
                   </div>
                   <div className="mt-2">
-                    <Label className="text-xs text-gray-400">
+                    <Label className="text-xs text-muted-foreground">
                       Horizontal Position
                     </Label>
                     <input
@@ -385,7 +387,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-muted-foreground">
                   <ClipboardIcon className="size-4" />
                   <span>Paste a diagram from clipboard (Ctrl+V)</span>
                 </div>
@@ -393,14 +395,14 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
 
               {/* Cutout layer */}
               {state.removingBackground ? (
-                <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm text-gray-400">
+                <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm text-muted-foreground">
                   <Loader2Icon className="size-4 animate-spin" />
                   <span>Removing background...</span>
                 </div>
               ) : state.backgroundRemovalError ? (
-                <div className="rounded border border-red-800 px-3 py-2">
+                <div className="rounded border border-destructive/50 px-3 py-2">
                   <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-red-400">
+                    <div className="flex items-center gap-2 text-destructive">
                       <AlertCircleIcon className="size-4" />
                       <span>Cutout</span>
                     </div>
@@ -408,12 +410,12 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                       onClick={() =>
                         dispatch({ type: "retry-background-removal" })
                       }
-                      className="text-xs text-red-400 hover:text-red-300 underline"
+                      className="text-xs text-destructive hover:text-destructive/80 underline"
                     >
                       Retry
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-red-400/70">
+                  <p className="mt-1 text-xs text-destructive/70">
                     {state.backgroundRemovalError}
                   </p>
                 </div>
@@ -421,18 +423,18 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                 <div className="rounded border px-3 py-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <ScissorsIcon className="size-4 text-gray-400" />
+                      <ScissorsIcon className="size-4 text-muted-foreground" />
                       <span>Cutout</span>
                     </div>
                     <button
                       onClick={() => dispatch({ type: "cutout-removed" })}
-                      className="text-gray-400 hover:text-gray-200"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       <XIcon className="size-4" />
                     </button>
                   </div>
                   <div className="mt-2">
-                    <Label className="text-xs text-gray-400">
+                    <Label className="text-xs text-muted-foreground">
                       Horizontal Position
                     </Label>
                     <input
@@ -451,7 +453,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-muted-foreground">
                   <ScissorsIcon className="size-4" />
                   <span>No cutout layer</span>
                 </div>
@@ -461,7 +463,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             {/* YouTube size previews */}
             {state.previewDataUrl && (
               <div className="mt-4">
-                <h3 className="mb-2 text-sm font-medium text-gray-400">
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground">
                   YouTube Previews
                 </h3>
                 <div className="flex items-end gap-4">
@@ -489,7 +491,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
 
             <div className="mt-3 flex items-center gap-2">
               {state.saving && (
-                <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2Icon className="size-4 animate-spin" />
                   <span>Saving...</span>
                 </div>
@@ -510,7 +512,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         {thumbnails.length === 0 &&
           !state.capturedPhoto &&
           !state.diagramImage && (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-4">
               <ImageIcon className="size-16 opacity-50" />
               <div className="text-center">
                 <p className="text-lg font-medium">No thumbnails yet</p>

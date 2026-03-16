@@ -32,12 +32,12 @@ export const createTable = pgTableCreator(
   (name) => `course-video-manager_${name}`
 );
 
-export const repos = createTable("repo", {
+export const courses = createTable("course", {
   id: varchar("id", { length: 255 })
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  filePath: text("file_path").notNull(),
+  filePath: text("repo_path").notNull(),
   name: text("name").notNull(),
   archived: boolean("archived").notNull().default(false),
   memory: text("memory").notNull().default(""),
@@ -49,13 +49,16 @@ export const repos = createTable("repo", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const repoVersions = createTable("repo_version", {
+/** @deprecated Use `courses` instead. Will be removed after repo-to-course rename is complete. */
+export const repos = courses;
+
+export const courseVersions = createTable("course_version", {
   id: varchar("id", { length: 255 })
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  repoId: varchar("repo_id", { length: 255 })
-    .references(() => repos.id, { onDelete: "cascade" })
+  repoId: varchar("course_id", { length: 255 })
+    .references(() => courses.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
@@ -67,13 +70,16 @@ export const repoVersions = createTable("repo_version", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
+/** @deprecated Use `courseVersions` instead. Will be removed after repo-to-course rename is complete. */
+export const repoVersions = courseVersions;
+
 export const sections = createTable("section", {
   id: varchar("id", { length: 255 })
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  repoVersionId: varchar("repo_version_id", { length: 255 })
-    .references(() => repoVersions.id, { onDelete: "cascade" })
+  repoVersionId: varchar("course_version_id", { length: 255 })
+    .references(() => courseVersions.id, { onDelete: "cascade" })
     .notNull(),
   previousVersionSectionId: varchar("previous_version_section_id", {
     length: 255,
@@ -228,29 +234,29 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
 }));
 
 export const sectionsRelations = relations(sections, ({ one, many }) => ({
-  repoVersion: one(repoVersions, {
+  repoVersion: one(courseVersions, {
     fields: [sections.repoVersionId],
-    references: [repoVersions.id],
+    references: [courseVersions.id],
   }),
   lessons: many(lessons),
 }));
 
-export const repoVersionsRelations = relations(
-  repoVersions,
+export const courseVersionsRelations = relations(
+  courseVersions,
   ({ one, many }) => ({
-    repo: one(repos, {
-      fields: [repoVersions.repoId],
-      references: [repos.id],
+    repo: one(courses, {
+      fields: [courseVersions.repoId],
+      references: [courses.id],
     }),
     sections: many(sections),
   })
 );
 
-export const reposRelations = relations(repos, ({ many }) => ({
-  versions: many(repoVersions),
+export const coursesRelations = relations(courses, ({ many }) => ({
+  versions: many(courseVersions),
 }));
 
-// Plan tables (standalone, not tied to repos)
+// Plan tables (standalone, not tied to courses)
 export const plans = createTable("plan", {
   id: varchar("id", { length: 255 })
     .notNull()

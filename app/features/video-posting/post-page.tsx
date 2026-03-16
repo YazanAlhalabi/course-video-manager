@@ -291,7 +291,8 @@ export function PostPage({
   const [isConvertingShortLinks, setIsConvertingShortLinks] = useState(false);
 
   const handleConvertToShortLinks = async () => {
-    const urlRegex = /https?:\/\/aihero\.dev[^\s)>]*/g;
+    const urlRegex = /https?:\/\/(?:www\.)?aihero\.dev[^\s)>]*/g;
+    const shortLinkRegex = /^https?:\/\/(?:www\.)?aihero\.dev\/s\//;
     const matches = description.match(urlRegex);
     if (!matches || matches.length === 0) {
       toast("No aihero.dev links found", {
@@ -300,7 +301,16 @@ export function PostPage({
       return;
     }
 
-    const uniqueUrls = [...new Set(matches)];
+    const uniqueUrls = [...new Set(matches)].filter(
+      (url) => !shortLinkRegex.test(url)
+    );
+
+    if (uniqueUrls.length === 0) {
+      toast("All links already converted", {
+        description: "All aihero.dev links are already short links.",
+      });
+      return;
+    }
 
     setIsConvertingShortLinks(true);
     try {

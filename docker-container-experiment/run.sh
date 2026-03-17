@@ -81,7 +81,7 @@ ${PROMPT}" \
   if [ "$head_before" != "$head_after" ]; then
     echo ""
     echo "New commit detected. Extracting patch..."
-    sync_commits_from_sandbox
+    sync_commits_from_sandbox "$head_before"
   else
     echo ""
     echo "No new commit in this iteration."

@@ -109,25 +109,27 @@ get_sandbox_head() {
 
 # --- Sync commits from sandbox back to host ---
 
+# Usage: sync_commits_from_sandbox [base_sha]
+# base_sha: the sandbox HEAD before Claude ran (defaults to local HEAD)
 sync_commits_from_sandbox() {
-  local local_head
-  local_head=$(git rev-parse HEAD)
+  local base_head="${1:-$(git rev-parse HEAD)}"
 
   local sandbox_head
   sandbox_head=$(get_sandbox_head)
 
-  if [ "$local_head" = "$sandbox_head" ]; then
+  if [ "$base_head" = "$sandbox_head" ]; then
     echo "No new commits to sync."
     return
   fi
 
   local new_commit_count
   new_commit_count=$(docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-    git rev-list "${local_head}..HEAD" --count 2>/dev/null || echo "0")
+    git rev-list "${base_head}..HEAD" --count 2>/dev/null)
 
-  if [ "$new_commit_count" = "0" ]; then
-    echo "No new commits to sync."
-    return
+  if [ -z "$new_commit_count" ] || [ "$new_commit_count" = "0" ]; then
+    echo "ERROR: Sandbox HEAD ($sandbox_head) differs from base ($base_head) but no commits found in range."
+    echo "This likely means the commit histories have diverged."
+    return 1
   fi
 
   echo "Found ${new_commit_count} new commit(s). Extracting patches..."
@@ -136,7 +138,7 @@ sync_commits_from_sandbox() {
   patch_dir=$(mktemp -d)
 
   docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-    git format-patch "${local_head}..HEAD" -o /tmp/patches 2>/dev/null
+    git format-patch "${base_head}..HEAD" -o /tmp/patches 2>/dev/null
 
   docker cp "${CONTAINER_NAME}:/tmp/patches/." "$patch_dir/"
 

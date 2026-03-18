@@ -37,24 +37,77 @@ export const meta: Route.MetaFunction = () => {
   return [{ title: "CVM - Concatenate Videos" }];
 };
 
+interface VideoItem {
+  id: string;
+  path: string;
+  duration: number;
+}
+
+interface CourseVideoSection {
+  sectionPath: string;
+  lessons: {
+    lessonTitle: string;
+    videos: VideoItem[];
+  }[];
+}
+
+interface CourseSource {
+  id: string;
+  name: string;
+  sections: CourseVideoSection[];
+}
+
+const computeDuration = (clips: { sourceStartTime: number; sourceEndTime: number }[]) =>
+  clips.reduce((acc, c) => acc + (c.sourceEndTime - c.sourceStartTime), 0);
+
 export const loader = async () => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const videos = yield* db.getAllStandaloneVideos();
-    const courses = yield* db.getCourses();
+    const courseList = yield* db.getCourses();
     const sidebarVideos = yield* db.getStandaloneVideos();
     const plans = yield* db.getPlans();
+
+    // Load all courses with their sections/lessons/videos (draft version)
+    const courseSources: CourseSource[] = [];
+    for (const course of courseList) {
+      const full = yield* db.getCourseWithSectionsById(course.id);
+      const draftVersion = full.versions[0];
+      if (!draftVersion) continue;
+
+      const sections: CourseVideoSection[] = [];
+      for (const section of draftVersion.sections) {
+        const lessons: CourseVideoSection["lessons"] = [];
+        for (const lesson of section.lessons) {
+          const lessonVideos: VideoItem[] = lesson.videos.map((v) => ({
+            id: v.id,
+            path: v.path,
+            duration: computeDuration(v.clips),
+          }));
+          if (lessonVideos.length > 0) {
+            lessons.push({
+              lessonTitle: lesson.title ?? lesson.path,
+              videos: lessonVideos,
+            });
+          }
+        }
+        if (lessons.length > 0) {
+          sections.push({ sectionPath: section.path, lessons });
+        }
+      }
+      if (sections.length > 0) {
+        courseSources.push({ id: course.id, name: course.name, sections });
+      }
+    }
 
     return {
       videos: videos.map((v) => ({
         id: v.id,
         path: v.path,
-        duration: v.clips.reduce(
-          (acc: number, c: any) => acc + (c.sourceEndTime - c.sourceStartTime),
-          0
-        ),
+        duration: computeDuration(v.clips),
       })),
-      courses,
+      courseSources,
+      courses: courseList,
       sidebarVideos,
       plans,
     };
@@ -124,16 +177,145 @@ function SortableQueueItem({
   );
 }
 
+function VideoRow({
+  video,
+  onAdd,
+  isInQueue,
+}: {
+  video: QueueItem;
+  onAdd: (video: QueueItem) => void;
+  isInQueue: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted/50">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <VideoIcon className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+        <span className="text-sm truncate">{video.path}</span>
+        <span className="text-xs text-muted-foreground flex-shrink-0">
+          {formatSecondsToTimeCode(video.duration)}
+        </span>
+      </div>
+      {!isInQueue && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onAdd(video)}
+          className="ml-2 flex-shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          Add
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function CourseVideoList({
+  course,
+  queueIds,
+  onAdd,
+}: {
+  course: CourseSource;
+  queueIds: Set<string>;
+  onAdd: (video: QueueItem) => void;
+}) {
+  const availableCount = course.sections.reduce(
+    (acc, s) =>
+      acc +
+      s.lessons.reduce(
+        (a, l) => a + l.videos.filter((v) => !queueIds.has(v.id)).length,
+        0
+      ),
+    0
+  );
+  const totalCount = course.sections.reduce(
+    (acc, s) => acc + s.lessons.reduce((a, l) => a + l.videos.length, 0),
+    0
+  );
+
+  if (totalCount === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center">
+        No videos in this course
+      </p>
+    );
+  }
+
+  if (availableCount === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center">
+        All videos added to queue
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {course.sections.map((section) => {
+        const hasAvailable = section.lessons.some((l) =>
+          l.videos.some((v) => !queueIds.has(v.id))
+        );
+        if (!hasAvailable) return null;
+        return (
+          <div key={section.sectionPath}>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-3">
+              {section.sectionPath}
+            </div>
+            {section.lessons.map((lesson) => {
+              const availableVideos = lesson.videos.filter(
+                (v) => !queueIds.has(v.id)
+              );
+              if (availableVideos.length === 0) return null;
+              return (
+                <div key={lesson.lessonTitle} className="mb-2">
+                  <div className="text-xs text-muted-foreground px-3 mb-0.5">
+                    {lesson.lessonTitle}
+                  </div>
+                  <div className="space-y-1">
+                    {availableVideos.map((video) => (
+                      <VideoRow
+                        key={video.id}
+                        video={video}
+                        onAdd={onAdd}
+                        isInQueue={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Component({ loaderData }: Route.ComponentProps) {
-  const { videos, courses, sidebarVideos, plans } = loaderData;
+  const { videos, courses, courseSources, sidebarVideos, plans } = loaderData;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialVideoId = searchParams.get("initial");
 
+  // Build a flat lookup of all videos (standalone + course) for initial video resolution
+  const allVideosMap = new Map<string, QueueItem>();
+  for (const v of videos) {
+    allVideosMap.set(v.id, v);
+  }
+  for (const course of courseSources) {
+    for (const section of course.sections) {
+      for (const lesson of section.lessons) {
+        for (const v of lesson.videos) {
+          allVideosMap.set(v.id, v);
+        }
+      }
+    }
+  }
+
   // Initialize queue with the initial video if provided
   const initialQueue: QueueItem[] = [];
   if (initialVideoId) {
-    const initialVideo = videos.find((v) => v.id === initialVideoId);
+    const initialVideo = allVideosMap.get(initialVideoId);
     if (initialVideo) {
       initialQueue.push(initialVideo);
     }
@@ -142,6 +324,7 @@ export default function Component({ loaderData }: Route.ComponentProps) {
   const [queue, setQueue] = useState<QueueItem[]>(initialQueue);
   const [name, setName] = useState(initialQueue[0]?.path ?? "");
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<string>("standalone");
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -198,7 +381,8 @@ export default function Component({ loaderData }: Route.ComponentProps) {
 
   // Videos that are available to add (not already in queue)
   const queueIds = new Set(queue.map((q) => q.id));
-  const availableVideos = videos.filter((v) => !queueIds.has(v.id));
+  const availableStandaloneVideos = videos.filter((v) => !queueIds.has(v.id));
+  const selectedCourse = courseSources.find((c) => c.id === selectedSource);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -219,8 +403,30 @@ export default function Component({ loaderData }: Route.ComponentProps) {
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Sources
             </div>
-            <div className="px-3 py-2 rounded-md bg-muted text-sm font-medium">
-              Standalone
+            <div className="space-y-1">
+              {courseSources.map((course) => (
+                <button
+                  key={course.id}
+                  onClick={() => setSelectedSource(course.id)}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium truncate ${
+                    selectedSource === course.id
+                      ? "bg-muted"
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  {course.name}
+                </button>
+              ))}
+              <button
+                onClick={() => setSelectedSource("standalone")}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
+                  selectedSource === "standalone"
+                    ? "bg-muted"
+                    : "hover:bg-muted/50"
+                }`}
+              >
+                Standalone
+              </button>
             </div>
           </div>
 
@@ -229,38 +435,35 @@ export default function Component({ loaderData }: Route.ComponentProps) {
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Available Videos
             </div>
-            {availableVideos.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {videos.length === 0
-                  ? "No standalone videos"
-                  : "All videos added to queue"}
-              </p>
+            {selectedSource === "standalone" ? (
+              availableStandaloneVideos.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {videos.length === 0
+                    ? "No standalone videos"
+                    : "All videos added to queue"}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {availableStandaloneVideos.map((video) => (
+                    <VideoRow
+                      key={video.id}
+                      video={video}
+                      onAdd={addToQueue}
+                      isInQueue={false}
+                    />
+                  ))}
+                </div>
+              )
+            ) : selectedCourse ? (
+              <CourseVideoList
+                course={selectedCourse}
+                queueIds={queueIds}
+                onAdd={addToQueue}
+              />
             ) : (
-              <div className="space-y-1">
-                {availableVideos.map((video) => (
-                  <div
-                    key={video.id}
-                    className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <VideoIcon className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                      <span className="text-sm truncate">{video.path}</span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                        {formatSecondsToTimeCode(video.duration)}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => addToQueue(video)}
-                      className="ml-2 flex-shrink-0"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Select a source
+              </p>
             )}
           </div>
 

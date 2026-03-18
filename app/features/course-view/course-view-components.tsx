@@ -126,6 +126,7 @@ export function FilterBar({
   fsStatusCounts,
   searchQuery,
   dispatch,
+  isRealCourse,
 }: {
   priorityFilter: number[];
   iconFilter: string[];
@@ -133,6 +134,7 @@ export function FilterBar({
   fsStatusCounts: { ghost: number; real: number; todo: number };
   searchQuery: string;
   dispatch: (action: courseViewReducer.Action) => void;
+  isRealCourse: boolean;
 }) {
   const hasActiveFilters =
     priorityFilter.length > 0 ||
@@ -230,45 +232,49 @@ export function FilterBar({
           );
         })}
 
-        <span className="text-muted-foreground mx-0.5">|</span>
-        {(["ghost", "real", "todo"] as const).map((status) => {
-          const isSelected = fsStatusFilter === status;
-          const showAsActive = fsStatusFilter === null || isSelected;
-          return (
-            <button
-              key={status}
-              className={`text-xs px-2 py-0.5 rounded-sm font-medium transition-colors flex items-center gap-1 ${
-                showAsActive
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              } ${isSelected ? "ring-1 ring-current" : ""}`}
-              onClick={() =>
-                dispatch({ type: "toggle-fs-status-filter", status })
-              }
-              title={
-                status === "ghost"
-                  ? "Ghost"
-                  : status === "real"
-                    ? "Real"
-                    : "Todo"
-              }
-            >
-              {status === "ghost" ? (
-                <Ghost className="w-3 h-3" />
-              ) : status === "real" ? (
-                <FileVideo className="w-3 h-3" />
-              ) : (
-                <ListChecks className="w-3 h-3" />
-              )}
-              {status === "ghost"
-                ? "Ghost"
-                : status === "real"
-                  ? "Real"
-                  : "Todo"}
-              <span className="opacity-60">{fsStatusCounts[status]}</span>
-            </button>
-          );
-        })}
+        {isRealCourse && (
+          <>
+            <span className="text-muted-foreground mx-0.5">|</span>
+            {(["ghost", "real", "todo"] as const).map((status) => {
+              const isSelected = fsStatusFilter === status;
+              const showAsActive = fsStatusFilter === null || isSelected;
+              return (
+                <button
+                  key={status}
+                  className={`text-xs px-2 py-0.5 rounded-sm font-medium transition-colors flex items-center gap-1 ${
+                    showAsActive
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  } ${isSelected ? "ring-1 ring-current" : ""}`}
+                  onClick={() =>
+                    dispatch({ type: "toggle-fs-status-filter", status })
+                  }
+                  title={
+                    status === "ghost"
+                      ? "Ghost"
+                      : status === "real"
+                        ? "Real"
+                        : "Todo"
+                  }
+                >
+                  {status === "ghost" ? (
+                    <Ghost className="w-3 h-3" />
+                  ) : status === "real" ? (
+                    <FileVideo className="w-3 h-3" />
+                  ) : (
+                    <ListChecks className="w-3 h-3" />
+                  )}
+                  {status === "ghost"
+                    ? "Ghost"
+                    : status === "real"
+                      ? "Real"
+                      : "Todo"}
+                  <span className="opacity-60">{fsStatusCounts[status]}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
 
         {hasActiveFilters && (
           <>

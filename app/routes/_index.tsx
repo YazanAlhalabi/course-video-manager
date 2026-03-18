@@ -546,6 +546,7 @@ export default function Component(props: Route.ComponentProps) {
                   fsStatusCounts={fsStatusCounts}
                   searchQuery={searchQuery}
                   dispatch={dispatch}
+                  isRealCourse={currentCourse?.filePath != null}
                 />
               </div>
 

@@ -122,23 +122,23 @@ describe("courseViewReducer", () => {
   });
 
   describe("ID-based selections", () => {
-    it("18. set-add-ghost-lesson-section-id: sets the section ID", () => {
+    it("18. set-add-lesson-section-id: sets the section ID", () => {
       const state = createTester()
         .send({
-          type: "set-add-ghost-lesson-section-id",
+          type: "set-add-lesson-section-id",
           sectionId: "section-1",
         })
         .getState();
       expect(state.addGhostLessonSectionId).toBe("section-1");
     });
 
-    it("19. set-add-ghost-lesson-section-id: clears with null", () => {
+    it("19. set-add-lesson-section-id: clears with null", () => {
       const state = createTester()
         .send({
-          type: "set-add-ghost-lesson-section-id",
+          type: "set-add-lesson-section-id",
           sectionId: "section-1",
         })
-        .send({ type: "set-add-ghost-lesson-section-id", sectionId: null })
+        .send({ type: "set-add-lesson-section-id", sectionId: null })
         .getState();
       expect(state.addGhostLessonSectionId).toBeNull();
     });

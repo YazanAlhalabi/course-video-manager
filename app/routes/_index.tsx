@@ -244,7 +244,6 @@ export default function Component(props: Route.ComponentProps) {
     addGhostLessonSectionId,
     insertAdjacentLessonId,
     insertPosition,
-    lessonCreationMode,
     addVideoToLessonId,
     editLessonId,
     editSectionId,
@@ -569,7 +568,6 @@ export default function Component(props: Route.ComponentProps) {
                 addGhostLessonSectionId={addGhostLessonSectionId}
                 insertAdjacentLessonId={insertAdjacentLessonId}
                 insertPosition={insertPosition}
-                lessonCreationMode={lessonCreationMode}
                 editSectionId={editSectionId}
                 addVideoToLessonId={addVideoToLessonId}
                 editLessonId={editLessonId}

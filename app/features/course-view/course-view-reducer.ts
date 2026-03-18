@@ -43,7 +43,6 @@ export namespace courseViewReducer {
     addGhostLessonSectionId: string | null;
     insertAdjacentLessonId: string | null;
     insertPosition: "before" | "after" | null;
-    lessonCreationMode: "ghost" | "real";
     addVideoToLessonId: string | null;
     editLessonId: string | null;
     editSectionId: string | null;
@@ -80,14 +79,12 @@ export namespace courseViewReducer {
       }
     | { type: "close-copy-section-transcript" }
     // ID-based selections
-    | { type: "set-add-ghost-lesson-section-id"; sectionId: string | null }
-    | { type: "set-add-real-lesson-section-id"; sectionId: string | null }
+    | { type: "set-add-lesson-section-id"; sectionId: string | null }
     | {
         type: "set-insert-lesson";
         sectionId: string;
         adjacentLessonId: string;
         position: "before" | "after";
-        mode: "ghost" | "real";
       }
     | { type: "set-add-video-to-lesson-id"; lessonId: string | null }
     | { type: "set-edit-lesson-id"; lessonId: string | null }
@@ -143,7 +140,6 @@ export function createInitialCourseViewState(): courseViewReducer.State {
     addGhostLessonSectionId: null,
     insertAdjacentLessonId: null,
     insertPosition: null,
-    lessonCreationMode: "ghost",
     addVideoToLessonId: null,
     editLessonId: null,
     editSectionId: null,
@@ -195,21 +191,12 @@ export const courseViewReducer: EffectReducer<
       return { ...state, copySectionTranscriptState: null };
 
     // ID-based selections
-    case "set-add-ghost-lesson-section-id":
+    case "set-add-lesson-section-id":
       return {
         ...state,
         addGhostLessonSectionId: action.sectionId,
         insertAdjacentLessonId: null,
         insertPosition: null,
-        lessonCreationMode: "ghost",
-      };
-    case "set-add-real-lesson-section-id":
-      return {
-        ...state,
-        addGhostLessonSectionId: action.sectionId,
-        insertAdjacentLessonId: null,
-        insertPosition: null,
-        lessonCreationMode: "real",
       };
     case "set-insert-lesson":
       return {
@@ -217,7 +204,6 @@ export const courseViewReducer: EffectReducer<
         addGhostLessonSectionId: action.sectionId,
         insertAdjacentLessonId: action.adjacentLessonId,
         insertPosition: action.position,
-        lessonCreationMode: action.mode,
       };
     case "set-add-video-to-lesson-id":
       return { ...state, addVideoToLessonId: action.lessonId };

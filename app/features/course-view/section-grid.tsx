@@ -31,12 +31,12 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
-  BookOpen,
   ChevronRight,
   ClipboardCopy,
   Ghost,
   GripVertical,
   PencilIcon,
+  Plus,
   Trash2,
 } from "lucide-react";
 import { useState, useCallback } from "react";
@@ -63,7 +63,6 @@ export function SectionGrid({
   addGhostLessonSectionId,
   insertAdjacentLessonId,
   insertPosition,
-  lessonCreationMode,
   editSectionId,
   addVideoToLessonId,
   editLessonId,
@@ -113,7 +112,6 @@ export function SectionGrid({
   addGhostLessonSectionId: string | null;
   insertAdjacentLessonId: string | null;
   insertPosition: "before" | "after" | null;
-  lessonCreationMode: "ghost" | "real";
   editSectionId: string | null;
   addVideoToLessonId: string | null;
   editLessonId: string | null;
@@ -469,24 +467,13 @@ export function SectionGrid({
                             <ContextMenuItem
                               onSelect={() =>
                                 dispatch({
-                                  type: "set-add-ghost-lesson-section-id",
+                                  type: "set-add-lesson-section-id",
                                   sectionId: section.id,
                                 })
                               }
                             >
-                              <Ghost className="w-4 h-4" />
-                              Create Ghost Lesson
-                            </ContextMenuItem>
-                            <ContextMenuItem
-                              onSelect={() =>
-                                dispatch({
-                                  type: "set-add-real-lesson-section-id",
-                                  sectionId: section.id,
-                                })
-                              }
-                            >
-                              <BookOpen className="w-4 h-4" />
-                              Create Real Lesson
+                              <Plus className="w-4 h-4" />
+                              Add Lesson
                             </ContextMenuItem>
                             <ContextMenuItem
                               onSelect={() =>
@@ -541,14 +528,13 @@ export function SectionGrid({
                       open={addGhostLessonSectionId === section.id}
                       onOpenChange={(open) => {
                         dispatch({
-                          type: "set-add-ghost-lesson-section-id",
+                          type: "set-add-lesson-section-id",
                           sectionId: open ? section.id : null,
                         });
                       }}
                       fetcher={addGhostFetcher}
                       adjacentLessonId={insertAdjacentLessonId}
                       position={insertPosition}
-                      mode={lessonCreationMode}
                       courseFilePath={currentCourse.filePath}
                     />
                     <DeleteSectionModal

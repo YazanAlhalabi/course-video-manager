@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -19,14 +20,21 @@ export function AddGhostLessonModal(props: {
   fetcher?: ReturnType<typeof useFetcher>;
   adjacentLessonId?: string | null;
   position?: "before" | "after" | null;
-  mode?: "ghost" | "real";
   courseFilePath?: string | null;
 }) {
   const internalFetcher = useFetcher();
   const fetcher = props.fetcher ?? internalFetcher;
   const [title, setTitle] = useState("");
   const [filePath, setFilePath] = useState("");
+  const [isReal, setIsReal] = useState(false);
   const wasSubmitting = useRef(false);
+
+  // Reset isReal when modal opens/closes
+  useEffect(() => {
+    if (!props.open) {
+      setIsReal(false);
+    }
+  }, [props.open]);
 
   // Close modal when fetcher completes successfully
   useEffect(() => {
@@ -37,10 +45,10 @@ export function AddGhostLessonModal(props: {
       wasSubmitting.current = false;
       setTitle("");
       setFilePath("");
+      setIsReal(false);
       props.onOpenChange(false);
     }
   }, [fetcher.state, props.onOpenChange]);
-  const isReal = props.mode === "real";
   const isGhostCourse = isReal && !props.courseFilePath;
   const isValid =
     title.trim().length > 0 && (!isGhostCourse || filePath.trim().length > 0);
@@ -48,19 +56,11 @@ export function AddGhostLessonModal(props: {
     ? "/api/lessons/create-real"
     : "/api/lessons/add-ghost";
 
-  const dialogTitle = isReal
-    ? isGhostCourse
-      ? "Materialize Course & Create Lesson"
-      : props.position === "before"
-        ? "Create Real Lesson Before"
-        : props.position === "after"
-          ? "Create Real Lesson After"
-          : "Create Real Lesson"
-    : props.position === "before"
-      ? "Add Ghost Lesson Before"
-      : props.position === "after"
-        ? "Add Ghost Lesson After"
-        : "Add Ghost Lesson";
+  const dialogTitle = props.position === "before"
+    ? "Add Lesson Before"
+    : props.position === "after"
+      ? "Add Lesson After"
+      : "Add Lesson";
 
   return (
     <Dialog
@@ -69,6 +69,7 @@ export function AddGhostLessonModal(props: {
         if (!open) {
           setTitle("");
           setFilePath("");
+          setIsReal(false);
         }
         props.onOpenChange(open);
       }}
@@ -106,6 +107,35 @@ export function AddGhostLessonModal(props: {
           {props.position && (
             <input type="hidden" name="position" value={props.position} />
           )}
+          <div className="space-y-2">
+            <Label htmlFor="ghost-lesson-title">Title</Label>
+            <Input
+              id="ghost-lesson-title"
+              name="title"
+              placeholder="e.g. Understanding Generics"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus={!isGhostCourse}
+            />
+          </div>
+          {props.courseFilePath != null && (
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="real-lesson-checkbox"
+                checked={isReal}
+                onCheckedChange={(checked) => setIsReal(checked === true)}
+              />
+              <div className="grid gap-1 leading-none">
+                <Label htmlFor="real-lesson-checkbox" className="cursor-pointer">
+                  Create on filesystem
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Creates a directory for this lesson on disk. Leave unchecked to
+                  create a ghost lesson that exists only in the database.
+                </p>
+              </div>
+            </div>
+          )}
           {isGhostCourse && (
             <div className="space-y-2">
               <Label htmlFor="course-file-path">Course File Path</Label>
@@ -123,23 +153,13 @@ export function AddGhostLessonModal(props: {
               </p>
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="ghost-lesson-title">Title</Label>
-            <Input
-              id="ghost-lesson-title"
-              name="title"
-              placeholder="e.g. Understanding Generics"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus={!isGhostCourse}
-            />
-          </div>
           <div className="flex justify-end space-x-2">
             <Button
               variant="outline"
               onClick={() => {
                 setTitle("");
                 setFilePath("");
+                setIsReal(false);
                 props.onOpenChange(false);
               }}
               type="button"
@@ -151,8 +171,6 @@ export function AddGhostLessonModal(props: {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : isGhostCourse ? (
                 "Materialize & Create"
-              ) : isReal ? (
-                "Create Lesson"
               ) : (
                 "Add Lesson"
               )}

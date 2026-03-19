@@ -8,7 +8,14 @@ import { RenameVideoModal } from "@/components/rename-video-modal";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useWebSocket } from "./hooks/use-websocket";
 import { useClipboardOperations } from "./hooks/use-clipboard-operations";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { StandaloneFilePasteModal } from "@/components/standalone-file-paste-modal";
 import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
@@ -119,6 +126,40 @@ const useVideoEditor = (props: {
   };
 };
 
+type FsData = {
+  hasExplainerFolder: boolean;
+  standaloneFiles: Array<{ path: string }>;
+  files: Array<{ path: string; size: number; defaultEnabled: boolean }>;
+};
+
+const FilePasteModalWithFsData = (props: {
+  fsData: Promise<FsData>;
+  lessonId?: string;
+  videoId: string;
+  isPasteModalOpen: boolean;
+  handlePasteModalClose: (open: boolean) => void;
+  handleFileCreated: () => void;
+}) => {
+  const fsData = use(props.fsData);
+  return props.lessonId ? (
+    <LessonFilePasteModal
+      videoId={props.videoId}
+      open={props.isPasteModalOpen}
+      onOpenChange={props.handlePasteModalClose}
+      existingFiles={fsData.files}
+      onFileCreated={props.handleFileCreated}
+    />
+  ) : (
+    <StandaloneFilePasteModal
+      videoId={props.videoId}
+      open={props.isPasteModalOpen}
+      onOpenChange={props.handlePasteModalClose}
+      existingFiles={fsData.standaloneFiles}
+      onFileCreated={props.handleFileCreated}
+    />
+  );
+};
+
 export const VideoEditor = (props: {
   obsConnectorState: OBSConnectionOuterState;
   items: TimelineItem[];
@@ -134,7 +175,11 @@ export const VideoEditor = (props: {
   clipIdsBeingTranscribed: Set<FrontendId>;
   onClipsRemoved: (clipIds: FrontendId[]) => void;
   onClipsRetranscribe: (clipIds: FrontendId[]) => void;
-  hasExplainerFolder: boolean;
+  fsData: Promise<{
+    hasExplainerFolder: boolean;
+    standaloneFiles: Array<{ path: string }>;
+    files: Array<{ path: string; size: number; defaultEnabled: boolean }>;
+  }>;
   videoCount: number;
   insertionPoint: FrontendInsertionPoint;
   onSetInsertionPoint: (mode: "after" | "before", clipId: FrontendId) => void;
@@ -158,8 +203,6 @@ export const VideoEditor = (props: {
   onPermanentlyRemoveArchived: (sessionId: SessionId) => void;
   onClearAllArchived: () => void;
   error: EditorError | null;
-  standaloneFiles: Array<{ path: string }>;
-  files: Array<{ path: string; size: number; defaultEnabled: boolean }>;
   onCreateVideoFromSelection: (
     clipIds: FrontendId[],
     clipSectionIds: FrontendId[],
@@ -424,14 +467,13 @@ export const VideoEditor = (props: {
       lessonPath: props.lessonPath,
       repoId: props.repoId,
       lessonId: props.lessonId,
-      hasExplainerFolder: props.hasExplainerFolder,
+      fsData: props.fsData,
       videoCount: props.videoCount,
       insertionPoint: props.insertionPoint,
       obsConnectorState: props.obsConnectorState,
       liveMediaStream: props.liveMediaStream,
       speechDetectorState: props.speechDetectorState,
       clipIdsBeingTranscribed: props.clipIdsBeingTranscribed,
-      files: props.files,
 
       // Callbacks
       onSetInsertionPoint: props.onSetInsertionPoint,
@@ -520,14 +562,13 @@ export const VideoEditor = (props: {
       props.lessonPath,
       props.repoId,
       props.lessonId,
-      props.hasExplainerFolder,
+      props.fsData,
       props.videoCount,
       props.insertionPoint,
       props.obsConnectorState,
       props.liveMediaStream,
       props.speechDetectorState,
       props.clipIdsBeingTranscribed,
-      props.files,
       props.onSetInsertionPoint,
       props.onMoveClip,
       props.onToggleBeatForClip,
@@ -581,23 +622,16 @@ export const VideoEditor = (props: {
         />
 
         {/* File Paste Modal */}
-        {props.lessonId ? (
-          <LessonFilePasteModal
+        <Suspense>
+          <FilePasteModalWithFsData
+            fsData={props.fsData}
+            lessonId={props.lessonId}
             videoId={props.videoId}
-            open={isPasteModalOpen}
-            onOpenChange={handlePasteModalClose}
-            existingFiles={props.files}
-            onFileCreated={handleFileCreated}
+            isPasteModalOpen={isPasteModalOpen}
+            handlePasteModalClose={handlePasteModalClose}
+            handleFileCreated={handleFileCreated}
           />
-        ) : (
-          <StandaloneFilePasteModal
-            videoId={props.videoId}
-            open={isPasteModalOpen}
-            onOpenChange={handlePasteModalClose}
-            existingFiles={props.standaloneFiles}
-            onFileCreated={handleFileCreated}
-          />
-        )}
+        </Suspense>
 
         {/* Rename Video Modal */}
         <RenameVideoModal

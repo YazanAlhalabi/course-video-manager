@@ -5,7 +5,10 @@ import { formatSecondsToTimeCode } from "@/services/utils";
 import { LiveMediaStream } from "./live-media-stream";
 import { RecordingSignalIndicator } from "./timeline-indicators";
 import { TableOfContents } from "./table-of-contents";
-import { SuggestionsPanel } from "./suggestions-panel";
+import {
+  SuggestionsPanel,
+  type SuggestionsPanelProps,
+} from "./suggestions-panel";
 import { ActionsDropdown } from "./actions-dropdown";
 import { VideoPlayerLinksTab } from "./video-player-links-tab";
 import { PreloadableClipManager } from "../preloadable-clip";
@@ -26,6 +29,8 @@ import {
   type SuggestionState,
 } from "../video-editor-context";
 import {
+  Suspense,
+  use,
   useState,
   useMemo,
   useCallback,
@@ -185,7 +190,7 @@ export const VideoPlayerPanel = () => {
     (ctx) => ctx.setIsRenameVideoModalOpen
   );
   const items = useContextSelector(VideoEditorContext, (ctx) => ctx.items);
-  const files = useContextSelector(VideoEditorContext, (ctx) => ctx.files);
+  const fsData = useContextSelector(VideoEditorContext, (ctx) => ctx.fsData);
   const selectedClipsSet = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.selectedClipsSet
@@ -197,10 +202,6 @@ export const VideoPlayerPanel = () => {
   const videoCount = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.videoCount
-  );
-  const hasExplainerFolder = useContextSelector(
-    VideoEditorContext,
-    (ctx) => ctx.hasExplainerFolder
   );
   const revealVideoFetcher = useFetcher();
   const openInVSCodeFetcher = useFetcher();
@@ -454,15 +455,17 @@ export const VideoPlayerPanel = () => {
             </div>
 
             {activeTab === "suggestions" && (
-              <SuggestionsPanel
-                videoId={videoId}
-                lastTranscribedClipId={lastTranscribedClipId}
-                clips={clips}
-                insertionPoint={insertionPoint}
-                files={files}
-                isStandalone={!lessonId}
-                onSuggestionStateChange={handleSuggestionStateChange}
-              />
+              <Suspense>
+                <DeferredSuggestionsPanel
+                  fsData={fsData}
+                  videoId={videoId}
+                  lastTranscribedClipId={lastTranscribedClipId}
+                  clips={clips}
+                  insertionPoint={insertionPoint}
+                  isStandalone={!lessonId}
+                  onSuggestionStateChange={handleSuggestionStateChange}
+                />
+              </Suspense>
             )}
 
             {activeTab === "toc" && hasSections && (
@@ -478,13 +481,43 @@ export const VideoPlayerPanel = () => {
         </div>
       </div>
 
-      <AddVideoModal
-        lessonId={lessonId}
-        videoCount={videoCount}
-        hasExplainerFolder={hasExplainerFolder}
-        open={isAddVideoModalOpen}
-        onOpenChange={setIsAddVideoModalOpen}
-      />
+      <Suspense>
+        <DeferredAddVideoModal
+          fsData={fsData}
+          lessonId={lessonId}
+          videoCount={videoCount}
+          open={isAddVideoModalOpen}
+          onOpenChange={setIsAddVideoModalOpen}
+        />
+      </Suspense>
     </>
+  );
+};
+
+type FsData = Promise<{
+  hasExplainerFolder: boolean;
+  standaloneFiles: Array<{ path: string }>;
+  files: Array<{ path: string; size: number; defaultEnabled: boolean }>;
+}>;
+
+const DeferredSuggestionsPanel = (
+  props: Omit<SuggestionsPanelProps, "files"> & { fsData: FsData }
+) => {
+  const { fsData: fsDataPromise, ...rest } = props;
+  const fsData = use(fsDataPromise);
+  return <SuggestionsPanel {...rest} files={fsData.files} />;
+};
+
+const DeferredAddVideoModal = (props: {
+  fsData: FsData;
+  lessonId?: string;
+  videoCount: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  const { fsData: fsDataPromise, ...rest } = props;
+  const fsData = use(fsDataPromise);
+  return (
+    <AddVideoModal {...rest} hasExplainerFolder={fsData.hasExplainerFolder} />
   );
 };

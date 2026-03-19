@@ -40,22 +40,118 @@ export type FileMetadata = {
   defaultEnabled: boolean;
 };
 
+// Deferred FS-heavy operations for the video editor
+const loadVideoEditorFsData = (opts: {
+  videoId: string;
+  lesson: {
+    path: string;
+    section: {
+      path: string;
+      repoVersion: { repo: { filePath: string | null } };
+    };
+  } | null;
+}) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const { videoId, lesson } = opts;
+    const standaloneVideoDir = getStandaloneVideoFilePath(videoId);
+
+    const [hasExplainerFolder, dirExists] = yield* Effect.all([
+      lesson
+        ? fs.exists(
+            `${lesson.section.repoVersion.repo.filePath}/${lesson.section.path}/${lesson.path}/explainer`
+          )
+        : Effect.succeed(false),
+      fs.exists(standaloneVideoDir),
+    ]);
+
+    let standaloneFiles: Array<{ path: string }> = [];
+
+    if (dirExists) {
+      const filesInDirectory = yield* fs.readDirectory(standaloneVideoDir);
+      standaloneFiles = yield* Effect.forEach(
+        filesInDirectory,
+        (filename) =>
+          Effect.gen(function* () {
+            const filePath = getStandaloneVideoFilePath(videoId, filename);
+            const stat = yield* fs.stat(filePath);
+            return stat.type !== "File" ? null : { path: filename };
+          }),
+        { concurrency: "unbounded" }
+      ).pipe(Effect.map(EffectArray.filter((f) => f !== null)));
+    }
+
+    let files: FileMetadata[] = [];
+
+    if (lesson) {
+      const repo = lesson.section.repoVersion.repo;
+      const section = lesson.section;
+      const lessonPath = path.join(repo.filePath!, section.path, lesson.path);
+
+      const allFilesInDirectory = yield* fs
+        .readDirectory(lessonPath, { recursive: true })
+        .pipe(
+          Effect.map((filesResult) =>
+            filesResult.map((file) => path.join(lessonPath, file))
+          )
+        );
+
+      const filteredFiles = allFilesInDirectory.filter(
+        (filePath) =>
+          !ALWAYS_EXCLUDED_DIRECTORIES.some((excludedDir) =>
+            filePath.includes(excludedDir)
+          )
+      );
+
+      files = yield* Effect.forEach(
+        filteredFiles,
+        (filePath) =>
+          Effect.gen(function* () {
+            const stat = yield* fs.stat(filePath);
+            if (stat.type !== "File") return null;
+            const relativePath = path.relative(lessonPath, filePath);
+            const extension = path.extname(filePath).slice(1);
+            const defaultEnabled =
+              DEFAULT_CHECKED_EXTENSIONS.includes(extension) &&
+              !DEFAULT_UNCHECKED_PATHS.some((uncheckedPath) =>
+                relativePath.toLowerCase().includes(uncheckedPath.toLowerCase())
+              );
+            return {
+              path: relativePath,
+              size: Number(stat.size),
+              defaultEnabled,
+            };
+          }),
+        { concurrency: "unbounded" }
+      ).pipe(Effect.map(EffectArray.filter((f) => f !== null)));
+    } else if (dirExists) {
+      const filesInDirectory = yield* fs.readDirectory(standaloneVideoDir);
+      files = yield* Effect.forEach(
+        filesInDirectory,
+        (filename) =>
+          Effect.gen(function* () {
+            const filePath = getStandaloneVideoFilePath(videoId, filename);
+            const stat = yield* fs.stat(filePath);
+            if (stat.type !== "File") return null;
+            const extension = path.extname(filename).slice(1);
+            const defaultEnabled =
+              DEFAULT_CHECKED_EXTENSIONS.includes(extension);
+            return { path: filename, size: Number(stat.size), defaultEnabled };
+          }),
+        { concurrency: "unbounded" }
+      ).pipe(Effect.map(EffectArray.filter((f) => f !== null)));
+    }
+
+    return { hasExplainerFolder, standaloneFiles, files };
+  });
+
 // Core data model - flat array of clips
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const fs = yield* FileSystem.FileSystem;
     const video = yield* db.getVideoWithClipsById(videoId);
-
-    // Check if lesson has explainer folder (only for lesson-attached videos)
-    const lesson = video.lesson;
-    const hasExplainerFolder = lesson
-      ? yield* fs.exists(
-          `${lesson.section.repoVersion.repo.filePath}/${lesson.section.path}/${lesson.path}/explainer`
-        )
-      : false;
 
     // Combine clips and clipSections into a unified items array, sorted by order
     const clipItems: Array<{ type: "clip"; order: string; data: DB.Clip }> = (
@@ -78,107 +174,9 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const sortedItems = sortByOrder([...clipItems, ...clipSectionItems]);
 
-    // Get standalone video files directory
-    const standaloneVideoDir = getStandaloneVideoFilePath(videoId);
-
-    // Check if directory exists
-    const dirExists = yield* fs.exists(standaloneVideoDir);
-
-    let standaloneFiles: Array<{
-      path: string;
-    }> = [];
-
-    if (dirExists) {
-      // Read all files from the standalone video directory
-      const filesInDirectory = yield* fs.readDirectory(standaloneVideoDir);
-
-      standaloneFiles = yield* Effect.forEach(filesInDirectory, (filename) => {
-        return Effect.gen(function* () {
-          const filePath = getStandaloneVideoFilePath(videoId, filename);
-          const stat = yield* fs.stat(filePath);
-
-          if (stat.type !== "File") {
-            return null;
-          }
-
-          return {
-            path: filename,
-          };
-        });
-      }).pipe(Effect.map(EffectArray.filter((f) => f !== null)));
-    }
-
-    // Get code files for suggestions context
-    let files: FileMetadata[] = [];
-
-    if (lesson) {
-      // For lesson-attached videos, get files from the lesson directory
-      const repo = lesson.section.repoVersion.repo;
-      const section = lesson.section;
-      const lessonPath = path.join(repo.filePath!, section.path, lesson.path);
-
-      const allFilesInDirectory = yield* fs
-        .readDirectory(lessonPath, { recursive: true })
-        .pipe(
-          Effect.map((filesResult) =>
-            filesResult.map((file) => path.join(lessonPath, file))
-          )
-        );
-
-      const filteredFiles = allFilesInDirectory.filter((filePath) => {
-        return !ALWAYS_EXCLUDED_DIRECTORIES.some((excludedDir) =>
-          filePath.includes(excludedDir)
-        );
-      });
-
-      files = yield* Effect.forEach(filteredFiles, (filePath) => {
-        return Effect.gen(function* () {
-          const stat = yield* fs.stat(filePath);
-
-          if (stat.type !== "File") {
-            return null;
-          }
-
-          const relativePath = path.relative(lessonPath, filePath);
-          const extension = path.extname(filePath).slice(1);
-
-          const defaultEnabled =
-            DEFAULT_CHECKED_EXTENSIONS.includes(extension) &&
-            !DEFAULT_UNCHECKED_PATHS.some((uncheckedPath) =>
-              relativePath.toLowerCase().includes(uncheckedPath.toLowerCase())
-            );
-
-          return {
-            path: relativePath,
-            size: Number(stat.size),
-            defaultEnabled,
-          };
-        });
-      }).pipe(Effect.map(EffectArray.filter((f) => f !== null)));
-    } else if (dirExists) {
-      // For standalone videos, use the standalone files directory with full metadata
-      const filesInDirectory = yield* fs.readDirectory(standaloneVideoDir);
-
-      files = yield* Effect.forEach(filesInDirectory, (filename) => {
-        return Effect.gen(function* () {
-          const filePath = getStandaloneVideoFilePath(videoId, filename);
-          const stat = yield* fs.stat(filePath);
-
-          if (stat.type !== "File") {
-            return null;
-          }
-
-          const extension = path.extname(filename).slice(1);
-          const defaultEnabled = DEFAULT_CHECKED_EXTENSIONS.includes(extension);
-
-          return {
-            path: filename,
-            size: Number(stat.size),
-            defaultEnabled,
-          };
-        });
-      }).pipe(Effect.map(EffectArray.filter((f) => f !== null)));
-    }
+    // Strip clips/clipSections from video sent to client (already in items)
+    const lesson = video.lesson;
+    const { clips: _clips, clipSections: _clipSections, ...slimVideo } = video;
 
     const whiteNoiseAssetPath = path.join(
       process.cwd(),
@@ -187,15 +185,18 @@ export const loader = async (args: Route.LoaderArgs) => {
       "white-noise.mp4"
     );
 
+    // Deferred: FS-heavy operations streamed after initial render
+    const fsData = runtimeLive.runPromise(
+      loadVideoEditorFsData({ videoId, lesson })
+    );
+
     return {
-      video,
+      video: slimVideo,
       items: sortedItems,
       waveformData: undefined,
-      hasExplainerFolder,
       videoCount: lesson?.videos.length ?? 1,
-      standaloneFiles,
-      files,
       whiteNoiseAssetPath,
+      fsData,
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -437,11 +438,9 @@ export const ComponentInner = (props: Route.ComponentProps) => {
       liveMediaStream={obsConnector.mediaStream}
       speechDetectorState={obsConnector.speechDetectorState}
       clipIdsBeingTranscribed={clipState.clipIdsBeingTranscribed}
-      hasExplainerFolder={props.loaderData.hasExplainerFolder}
+      fsData={props.loaderData.fsData}
       videoCount={props.loaderData.videoCount}
       error={clipState.error}
-      standaloneFiles={props.loaderData.standaloneFiles}
-      files={props.loaderData.files}
       onCreateVideoFromSelection={(
         frontendClipIds,
         frontendClipSectionIds,

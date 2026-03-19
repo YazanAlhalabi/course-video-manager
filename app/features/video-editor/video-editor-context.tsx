@@ -66,14 +66,17 @@ export type VideoEditorContextType = {
   lessonPath?: string;
   repoId?: string;
   lessonId?: string;
-  hasExplainerFolder: boolean;
+  fsData: Promise<{
+    hasExplainerFolder: boolean;
+    standaloneFiles: Array<{ path: string }>;
+    files: FileMetadata[];
+  }>;
   videoCount: number;
   insertionPoint: FrontendInsertionPoint;
   obsConnectorState: OBSConnectionOuterState;
   liveMediaStream: MediaStream | null;
   speechDetectorState: FrontendSpeechDetectorState;
   clipIdsBeingTranscribed: Set<FrontendId>;
-  files: FileMetadata[];
 
   // Callbacks
   onSetInsertionPoint: (mode: "after" | "before", clipId: FrontendId) => void;

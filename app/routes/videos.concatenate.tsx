@@ -22,13 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Console, Effect } from "effect";
-import {
-  GripVertical,
-  Loader2,
-  Plus,
-  Trash2,
-  VideoIcon,
-} from "lucide-react";
+import { GripVertical, Loader2, Plus, Trash2, VideoIcon } from "lucide-react";
 import { useState, useCallback } from "react";
 import { data, useNavigate, useSearchParams } from "react-router";
 import type { Route } from "./+types/videos.concatenate";
@@ -58,8 +52,9 @@ interface CourseSource {
   sections: CourseVideoSection[];
 }
 
-const computeDuration = (clips: { sourceStartTime: number; sourceEndTime: number }[]) =>
-  clips.reduce((acc, c) => acc + (c.sourceEndTime - c.sourceStartTime), 0);
+const computeDuration = (
+  clips: { sourceStartTime: number; sourceEndTime: number }[]
+) => clips.reduce((acc, c) => acc + (c.sourceEndTime - c.sourceStartTime), 0);
 
 export const loader = async () => {
   return Effect.gen(function* () {
@@ -166,11 +161,11 @@ function SortableQueueItem({
       </button>
       <div className="flex-1 min-w-0">
         {item.contextPath && (
-          <span className="text-xs text-muted-foreground truncate block">
+          <span className="text-xs text-muted-foreground break-all">
             {item.contextPath}
           </span>
         )}
-        <span className="text-sm font-medium truncate block">{item.path}</span>
+        <span className="text-sm font-medium break-all">{item.path}</span>
         <span className="text-xs text-muted-foreground">
           {formatSecondsToTimeCode(item.duration)}
         </span>
@@ -198,7 +193,7 @@ function VideoRow({
     <div className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted/50">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <VideoIcon className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-        <span className="text-sm truncate">{video.path}</span>
+        <span className="text-sm break-all">{video.path}</span>
         <span className="text-xs text-muted-foreground flex-shrink-0">
           {formatSecondsToTimeCode(video.duration)}
         </span>
@@ -476,7 +471,7 @@ export default function Component({ loaderData }: Route.ComponentProps) {
           </div>
 
           {/* Right column: Queue */}
-          <div className="w-80 overflow-y-auto p-3 flex flex-col">
+          <div className="w-96 overflow-y-auto p-3 flex flex-col">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Queue ({queue.length})
             </div>
